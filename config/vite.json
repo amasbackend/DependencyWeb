@@ -1,0 +1,5 @@
+{
+  "root": "app/frontend",
+  "outDir": "public/vite",
+  "assetsDir": "assets"
+}

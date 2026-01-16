@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>關聯文件</title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <%= yield %>
+</body>
+</html>

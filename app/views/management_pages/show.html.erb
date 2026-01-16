@@ -1,0 +1,392 @@
+<div class="w-full mx-auto">
+  <!-- 浮動導引列 -->
+  <div class="sticky top-0 z-20 bg-white shadow-md py-3 px-6">
+    <div class="flex items-center justify-between">
+      <!-- 左側：返回按鈕 -->
+      <%= link_to "⬅ 返回主頁", management_pages_path, 
+        class: "inline-block px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-300 text-sm" %>
+      
+      <!-- 中間：標題 -->
+      <h1 class="text-2xl font-bold text-gray-800"><%= @company.name %> Management Pages</h1>
+      
+      <!-- 右側：搜尋和篩選功能 -->
+      <div class="flex items-center space-x-2">
+        <%= form_with url: management_page_path(@company), method: :get, local: true, class: "flex items-center space-x-2" do %>
+          <%= label_tag :query, "Search:", class: "sr-only" %>
+          <%= text_field_tag :query, params[:query], 
+            class: "border border-gray-300 rounded-lg px-3 py-2 w-48 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+            placeholder: "搜尋..." %>
+          <%= submit_tag "Search", 
+            class: "bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 text-sm" %>
+        <% end %>
+        
+        <!-- 篩選按鈕 -->
+        <div class="flex items-center space-x-1">
+          <%= link_to management_page_path(@company, filter: 'all'), 
+            class: "px-3 py-2 rounded-lg text-sm font-medium #{params[:filter] != 'changed' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" do %>
+            全部
+          <% end %>
+          <%= link_to management_page_path(@company, filter: 'changed'), 
+            class: "px-3 py-2 rounded-lg text-sm font-medium #{params[:filter] == 'changed' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" do %>
+            🔄 異動檔案
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 統計資訊 -->
+  <div class="pt-4 pb-2">
+    <div class="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+      <div class="flex items-center space-x-4">
+        <div class="text-sm text-gray-600">
+          總計: <span class="font-semibold text-gray-800"><%= @action_pages.count %></span> 個 Action Page
+        </div>
+        <div class="text-sm text-yellow-600">
+          Action 變更: <span class="font-semibold text-yellow-800"><%= @action_pages.count { |ap| ap.changed_flag } %></span> 個
+        </div>
+        <div class="text-sm text-orange-600">
+          Model 變更: <span class="font-semibold text-orange-800"><%= @action_pages.count { |ap| ap.relate_models.any? { |rm| rm.changed_flag } } %></span> 個
+        </div>
+        <div class="text-sm text-gray-600">
+          正常: <span class="font-semibold text-gray-800"><%= @action_pages.count { |ap| !ap.changed_flag && !ap.relate_models.any? { |rm| rm.changed_flag } } %></span> 個
+        </div>
+      </div>
+      <% if params[:filter] == 'changed' %>
+        <div class="text-sm text-yellow-600 font-medium">
+          🔄 目前顯示：僅已變更的項目
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- GitHub 分析控制區 -->
+  <div class="pt-2 pb-4">
+    <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+      <h3 class="text-lg font-semibold text-gray-800 mb-3">GitHub PR 分析</h3>
+      <div class="flex items-center space-x-4 flex-wrap gap-2">
+        <!-- 重置 Flag 按鈕 -->
+        <button 
+          id="reset-flags-btn"
+          class="px-4 py-2 bg-red-600 text-black rounded-lg shadow-md hover:bg-red-700 hover:shadow-lg hover:scale-105 active:bg-red-800 active:scale-95 transition duration-200 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick="resetFlags()">
+          <span id="reset-flags-text">重置 Flag</span>
+          <span id="reset-flags-spinner" class="hidden inline-block ml-2">
+            <svg class="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </span>
+        </button>
+        
+        <!-- Owner、PR Number 輸入框和送出按鈕 -->
+        <div class="flex items-center space-x-2 flex-wrap gap-2">
+          <div class="flex items-center space-x-1">
+            <label for="owner-input" class="text-sm text-gray-700 font-medium">Owner:</label>
+            <input 
+              type="text" 
+              id="owner-input" 
+              placeholder="例如: AMASTek"
+              class="border border-gray-300 rounded-lg px-3 py-2 w-32 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <span class="text-xs text-gray-500">建議: 'AMASTek', 'amashrm'</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <label for="pr-number-input" class="text-sm text-gray-700 font-medium">PR Number:</label>
+            <input 
+              type="text" 
+              id="pr-number-input" 
+              placeholder="例如: 65"
+              class="border border-gray-300 rounded-lg px-3 py-2 w-32 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <button 
+              id="query-pr-btn"
+              class="px-3 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg hover:scale-105 active:bg-blue-800 active:scale-95 transition duration-200 text-xs font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onclick="queryPrInfo()"
+              title="查詢 PR 資訊">
+              🔍查詢 PR 資訊
+            </button>
+          </div>
+          <button 
+            id="update-flags-btn"
+            class="px-4 py-2 bg-green-600 text-black rounded-lg shadow-md hover:bg-green-700 hover:shadow-lg hover:scale-105 active:bg-green-800 active:scale-95 transition duration-200 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick="updateFlagsFromPr()">
+            <span id="update-flags-text">分析 PR</span>
+            <span id="update-flags-spinner" class="hidden inline-block ml-2">
+              <svg class="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="1 0" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+      </div>
+      <!-- PR 資訊顯示區域 -->
+      <div id="pr-info-display" class="hidden mt-3 p-3 bg-white rounded-lg border border-gray-300">
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <div class="text-sm font-semibold text-gray-800 mb-1" id="pr-title"></div>
+            <div class="text-xs text-gray-500">
+              <span id="pr-state"></span>
+              <span class="mx-2">•</span>
+              <span id="pr-user"></span>
+            </div>
+          </div>
+          <a id="pr-link" href="#" target="_blank" class="text-xs text-blue-600 hover:text-blue-800 ml-2">
+            查看 PR →
+          </a>
+        </div>
+      </div>
+      <!-- 訊息顯示區域 -->
+      <div id="message-indicator" class="hidden mt-3 text-sm font-medium"></div>
+    </div>
+  </div>
+
+  <!-- 表格 -->
+  <div class="pt-2">
+    <table class="w-full border border-gray-300 border-collapse bg-white rounded-lg shadow-md table-fixed">
+      <thead class="sticky top-[72px] z-10">
+        <tr class="bg-gray-200 text-gray-700 uppercase text-sm shadow-md">
+          <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Management Page</th>
+          <th class="px-4 py-3 border border-gray-300 w-[250px] break-words bg-gray-200">Action Page</th>
+          <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Relate Action</th>
+          <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Relate Model</th>
+          <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Select Column</th>
+          <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Modify Column</th>
+          <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Delete Column</th>
+          <th class="px-4 py-3 border border-gray-300 w-[100px] break-words bg-gray-200">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+          <% @management_pages.each do |management_page| %>
+            <tr class="bg-blue-100 font-semibold">
+              <td colspan="8" class="px-4 py-4 border border-gray-300 text-lg break-words"><%= management_page.name %></td>
+            </tr>
+            
+            <% action_pages = @action_pages.select { |action_page| action_page[:management_page_id] == management_page.id } %>
+            
+            <% if action_pages&.any? %>
+              <% action_pages.each do |action_page| %>
+                <% 
+                  # 檢查 action_page 或任何 relate_model 是否有 changed_flag
+                  has_changed_action = action_page.changed_flag
+                  has_changed_models = action_page.relate_models.any? { |rm| rm.changed_flag }
+                  has_any_changes = has_changed_action || has_changed_models
+                  
+                  # 根據任何變更決定行的樣式
+                  row_class = has_any_changes ? "bg-yellow-100 hover:bg-yellow-200 border-l-4 border-yellow-500" : "hover:bg-gray-100"
+                %>
+                <tr class="<%= row_class %>">
+                  <td class="px-4 py-3 border border-gray-300 w-[200px]"></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[250px] text-blue-600 font-bold break-words">
+                    <%= action_page.name %>
+                    <% if has_changed_action %>
+                      <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
+                        🔄 Action
+                      </span>
+                    <% end %>
+                    <% if has_changed_models %>
+                      <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
+                        📊 Model
+                      </span>
+                    <% end %>
+                  </td>
+                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= action_page.relate_action&.join(', ') %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= action_page.relate_model&.join(', ') %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= action_page.select_column&.join(", ") %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= action_page.modify_column&.join(", ") %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= action_page.delete_column&.join(", ") %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[100px] break-words text-center">
+                    <% if has_any_changes %>
+                      <div class="flex flex-col space-y-1">
+                        <% if has_changed_action %>
+                          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
+                            🔄 Action
+                          </span>
+                        <% end %>
+                        <% if has_changed_models %>
+                          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
+                            📊 Model
+                          </span>
+                        <% end %>
+                      </div>
+                    <% else %>
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                        ✓ 正常
+                      </span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <!-- 如果沒有 Action Page -->
+              <tr class="bg-gray-50">
+                <td class="border border-gray-300"></td>
+                <td colspan="7" class="px-4 py-3 border border-gray-300 text-center text-gray-500">No Action Pages</td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showMessage(message, isSuccess) {
+    const messageEl = document.getElementById('message-indicator');
+    messageEl.textContent = message;
+    messageEl.className = isSuccess 
+      ? 'mt-3 text-sm font-medium text-green-600' 
+      : 'mt-3 text-sm font-medium text-red-600';
+    messageEl.classList.remove('hidden');
+  }
+
+  function setButtonLoading(btnId, textId, spinnerId, isLoading) {
+    const btn = document.getElementById(btnId);
+    const text = document.getElementById(textId);
+    const spinner = document.getElementById(spinnerId);
+    
+    if (isLoading) {
+      btn.disabled = true;
+      text.textContent = '讀取中...';
+      spinner.classList.remove('hidden');
+    } else {
+      btn.disabled = false;
+      if (btnId === 'reset-flags-btn') {
+        text.textContent = '重置 Flag';
+      } else {
+        text.textContent = '分析 PR';
+      }
+      spinner.classList.add('hidden');
+    }
+  }
+
+  function resetFlags() {
+    setButtonLoading('reset-flags-btn', 'reset-flags-text', 'reset-flags-spinner', true);
+    
+    fetch('<%= reset_flags_management_page_path(@company) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': '<%= form_authenticity_token %>'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showMessage('✅ ' + data.message, true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        showMessage('❌ ' + (data.error || '操作失敗'), false);
+        setButtonLoading('reset-flags-btn', 'reset-flags-text', 'reset-flags-spinner', false);
+      }
+    })
+    .catch(error => {
+      showMessage('❌ 錯誤: ' + error.message, false);
+      setButtonLoading('reset-flags-btn', 'reset-flags-text', 'reset-flags-spinner', false);
+    });
+  }
+
+  function updateFlagsFromPr() {
+    const prNumber = document.getElementById('pr-number-input').value.trim();
+    const owner = document.getElementById('owner-input').value.trim();
+    
+    if (!prNumber) {
+      showMessage('❌ 請輸入 PR Number', false);
+      return;
+    }
+    
+    setButtonLoading('update-flags-btn', 'update-flags-text', 'update-flags-spinner', true);
+    
+    fetch('<%= update_flags_from_pr_management_page_path(@company) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': '<%= form_authenticity_token %>'
+      },
+      body: JSON.stringify({
+        owner: owner || 'AMASTek',
+        pr_number: prNumber
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showMessage('✅ ' + data.message, true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        showMessage('❌ ' + (data.error || '操作失敗'), false);
+        setButtonLoading('update-flags-btn', 'update-flags-text', 'update-flags-spinner', false);
+      }
+    })
+    .catch(error => {
+      showMessage('❌ 錯誤: ' + error.message, false);
+      setButtonLoading('update-flags-btn', 'update-flags-text', 'update-flags-spinner', false);
+    });
+  }
+
+  // 允許按 Enter 鍵送出
+  function queryPrInfo() {
+    const prNumber = document.getElementById('pr-number-input').value.trim();
+    const owner = document.getElementById('owner-input').value.trim();
+    const btn = document.getElementById('query-pr-btn');
+    const prInfoDisplay = document.getElementById('pr-info-display');
+    
+    if (!prNumber) {
+      showMessage('❌ 請先輸入 PR Number', false);
+      return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    
+    const url = new URL('<%= get_pr_info_management_page_path(@company) %>', window.location.origin);
+    url.searchParams.append('owner', owner || 'AMASTek');
+    url.searchParams.append('pr_number', prNumber);
+    
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': '<%= form_authenticity_token %>'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // 顯示 PR 資訊
+        document.getElementById('pr-title').textContent = data.title;
+        document.getElementById('pr-state').textContent = `狀態: ${data.state}`;
+        document.getElementById('pr-user').textContent = `作者: ${data.user || 'N/A'}`;
+        document.getElementById('pr-link').href = data.html_url;
+        prInfoDisplay.classList.remove('hidden');
+      } else {
+        showMessage('❌ ' + (data.error || '查詢失敗'), false);
+        prInfoDisplay.classList.add('hidden');
+      }
+    })
+    .catch(error => {
+      showMessage('❌ 錯誤: ' + error.message, false);
+      prInfoDisplay.classList.add('hidden');
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = '🔍';
+    });
+  }
+
+  document.getElementById('pr-number-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      updateFlagsFromPr();
+    }
+  });
+
+  document.getElementById('owner-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      updateFlagsFromPr();
+    }
+  });
+</script>
