@@ -35,7 +35,6 @@ gem "time_difference"
 gem "turbo-rails"
 gem "twsms2", "~> 1.3"
 gem "uglifier", ">= 1.3.0"
-gem "vite_rails"
 gem "whenever", require: false
 
 group :development, :test do

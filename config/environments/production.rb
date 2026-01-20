@@ -25,7 +25,16 @@ Rails.application.configure do
   config.public_file_server.enabled = ENV["RAILS_SERVE_STATIC_FILES"].present?
 
   # Compress CSS using a preprocessor.
-  # config.assets.css_compressor = :sass
+  #
+  # NOTE:
+  # Tailwind (and modern CSS in general) can emit syntax that legacy ruby-sass
+  # (used by Sprockets' :sass compressor) cannot parse, e.g. CSS Color 4 `rgb()`
+  # forms, `@layer`, `@property`, `color-mix()`, etc.
+  #
+  # Since Tailwind already outputs compressed CSS, we explicitly disable the
+  # Sprockets CSS compressor to avoid compilation failures during
+  # `assets:precompile`.
+  config.assets.css_compressor = nil
 
   # Do not fallback to assets pipeline if a precompiled asset is missed.
   config.assets.compile = false
