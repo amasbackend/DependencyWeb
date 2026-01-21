@@ -1,0 +1,1 @@
+GITHUB_ACCESS_TOKEN = Rails.application.credentials[:github_access_token].freeze
