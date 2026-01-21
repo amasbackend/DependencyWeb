@@ -7,7 +7,7 @@ class GithubAnalysisService
   require "base64"
 
   def initialize(access_token = nil)
-    @access_token = access_token || ENV.fetch("GITHUB_ACCESS_TOKEN", nil)
+    @access_token = access_token || GITHUB_ACCESS_TOKEN
     @base_url = "https://api.github.com"
     @api_version = "2022-11-28" # 使用穩定的 API 版本
   end
@@ -15,7 +15,7 @@ class GithubAnalysisService
   # 檢查 PR 是否存在
   def check_pr_exists(owner, repo, pr_number)
     uri = URI("#{@base_url}/repos/#{owner}/#{repo}/pulls/#{pr_number}")
-
+    
     request = Net::HTTP::Get.new(uri)
     # 使用新的認證方式
     request["Authorization"] = "Bearer #{@access_token}" if @access_token

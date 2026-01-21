@@ -7,7 +7,7 @@ require "base64"
 
 class GithubRepoService
   def initialize(access_token = nil)
-    @access_token = access_token || ENV.fetch("GITHUB_ACCESS_TOKEN", nil)
+    @access_token = access_token || GITHUB_ACCESS_TOKEN
     @base_url = "https://api.github.com"
     @api_version = "2022-11-28"
   end
