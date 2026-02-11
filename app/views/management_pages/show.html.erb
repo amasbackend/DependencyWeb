@@ -65,18 +65,13 @@
     <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
       <h3 class="text-lg font-semibold text-gray-800 mb-3">GitHub PR 分析</h3>
       <div class="flex items-center space-x-4 flex-wrap gap-2">
-        <!-- 重置 Flag 按鈕 -->
-        <button 
+        <!-- 重置 Flag 按鈕（無旋轉圖示，等待時改為彈出視窗） -->
+        <button
           id="reset-flags-btn"
+          type="button"
           class="px-4 py-2 bg-red-600 text-black rounded-lg shadow-md hover:bg-red-700 hover:shadow-lg hover:scale-105 active:bg-red-800 active:scale-95 transition duration-200 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           onclick="resetFlags()">
-          <span id="reset-flags-text">重置 Flag</span>
-          <span id="reset-flags-spinner" class="hidden inline-block ml-2">
-            <svg class="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </span>
+          重置 Flag
         </button>
         
         <!-- Owner、PR Number 輸入框和送出按鈕 -->
@@ -105,17 +100,13 @@
               🔍查詢 PR 資訊
             </button>
           </div>
-          <button 
+          <!-- 分析 PR 按鈕（無旋轉圖示，等待時改為彈出視窗） -->
+          <button
             id="update-flags-btn"
+            type="button"
             class="px-4 py-2 bg-green-600 text-black rounded-lg shadow-md hover:bg-green-700 hover:shadow-lg hover:scale-105 active:bg-green-800 active:scale-95 transition duration-200 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             onclick="updateFlagsFromPr()">
-            <span id="update-flags-text">分析 PR</span>
-            <span id="update-flags-spinner" class="hidden inline-block ml-2">
-              <svg class="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="1 0" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </span>
+            分析 PR
           </button>
         </div>
       </div>
@@ -137,6 +128,14 @@
       </div>
       <!-- 訊息顯示區域 -->
       <div id="message-indicator" class="hidden mt-3 text-sm font-medium"></div>
+    </div>
+  </div>
+
+  <!-- 等待中彈出視窗（匯入/處理時顯示，完成後自動消失） -->
+  <div id="waiting-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" aria-hidden="true">
+    <div class="bg-white rounded-xl shadow-2xl px-8 py-6 flex flex-col items-center gap-4 min-w-[200px]">
+      <p id="waiting-modal-message" class="text-gray-800 font-medium">等待中...</p>
+      <p class="text-sm text-gray-500 animate-pulse">請稍候</p>
     </div>
   </div>
 
@@ -231,6 +230,32 @@
 </div>
 
 <script>
+  function showWaitingModal(message) {
+    message = message || '等待中...';
+    const modal = document.getElementById('waiting-modal');
+    const msgEl = document.getElementById('waiting-modal-message');
+    if (modal) modal.classList.remove('hidden');
+    if (msgEl) msgEl.textContent = message;
+  }
+
+  function hideWaitingModal() {
+    const modal = document.getElementById('waiting-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function resetLoadingIndicators() {
+    hideWaitingModal();
+    const resetBtn = document.getElementById('reset-flags-btn');
+    const updateBtn = document.getElementById('update-flags-btn');
+    const queryBtn = document.getElementById('query-pr-btn');
+    if (resetBtn) resetBtn.disabled = false;
+    if (updateBtn) updateBtn.disabled = false;
+    if (queryBtn) {
+      queryBtn.disabled = false;
+      queryBtn.textContent = '🔍查詢 PR 資訊';
+    }
+  }
+
   function showMessage(message, isSuccess) {
     const messageEl = document.getElementById('message-indicator');
     messageEl.textContent = message;
@@ -240,29 +265,15 @@
     messageEl.classList.remove('hidden');
   }
 
-  function setButtonLoading(btnId, textId, spinnerId, isLoading) {
+  function setButtonDisabled(btnId, disabled) {
     const btn = document.getElementById(btnId);
-    const text = document.getElementById(textId);
-    const spinner = document.getElementById(spinnerId);
-    
-    if (isLoading) {
-      btn.disabled = true;
-      text.textContent = '讀取中...';
-      spinner.classList.remove('hidden');
-    } else {
-      btn.disabled = false;
-      if (btnId === 'reset-flags-btn') {
-        text.textContent = '重置 Flag';
-      } else {
-        text.textContent = '分析 PR';
-      }
-      spinner.classList.add('hidden');
-    }
+    if (btn) btn.disabled = disabled;
   }
 
   function resetFlags() {
-    setButtonLoading('reset-flags-btn', 'reset-flags-text', 'reset-flags-spinner', true);
-    
+    setButtonDisabled('reset-flags-btn', true);
+    showWaitingModal('重置 Flag 處理中...');
+
     fetch('<%= reset_flags_management_page_path(@company) %>', {
       method: 'POST',
       headers: {
@@ -272,6 +283,8 @@
     })
     .then(response => response.json())
     .then(data => {
+      hideWaitingModal();
+      setButtonDisabled('reset-flags-btn', false);
       if (data.success) {
         showMessage('✅ ' + data.message, true);
         setTimeout(() => {
@@ -279,12 +292,12 @@
         }, 1500);
       } else {
         showMessage('❌ ' + (data.error || '操作失敗'), false);
-        setButtonLoading('reset-flags-btn', 'reset-flags-text', 'reset-flags-spinner', false);
       }
     })
     .catch(error => {
+      hideWaitingModal();
+      setButtonDisabled('reset-flags-btn', false);
       showMessage('❌ 錯誤: ' + error.message, false);
-      setButtonLoading('reset-flags-btn', 'reset-flags-text', 'reset-flags-spinner', false);
     });
   }
 
@@ -297,8 +310,9 @@
       return;
     }
     
-    setButtonLoading('update-flags-btn', 'update-flags-text', 'update-flags-spinner', true);
-    
+    setButtonDisabled('update-flags-btn', true);
+    showWaitingModal('分析 PR 中...');
+
     fetch('<%= update_flags_from_pr_management_page_path(@company) %>', {
       method: 'POST',
       headers: {
@@ -312,6 +326,8 @@
     })
     .then(response => response.json())
     .then(data => {
+      hideWaitingModal();
+      setButtonDisabled('update-flags-btn', false);
       if (data.success) {
         showMessage('✅ ' + data.message, true);
         setTimeout(() => {
@@ -319,16 +335,15 @@
         }, 1500);
       } else {
         showMessage('❌ ' + (data.error || '操作失敗'), false);
-        setButtonLoading('update-flags-btn', 'update-flags-text', 'update-flags-spinner', false);
       }
     })
     .catch(error => {
+      hideWaitingModal();
+      setButtonDisabled('update-flags-btn', false);
       showMessage('❌ 錯誤: ' + error.message, false);
-      setButtonLoading('update-flags-btn', 'update-flags-text', 'update-flags-spinner', false);
     });
   }
 
-  // 允許按 Enter 鍵送出
   function queryPrInfo() {
     const prNumber = document.getElementById('pr-number-input').value.trim();
     const owner = document.getElementById('owner-input').value.trim();
@@ -341,8 +356,8 @@
     }
     
     btn.disabled = true;
-    btn.textContent = '⏳';
-    
+    showWaitingModal('查詢 PR 資訊中...');
+
     const url = new URL('<%= get_pr_info_management_page_path(@company) %>', window.location.origin);
     url.searchParams.append('owner', owner || 'AMASTek');
     url.searchParams.append('pr_number', prNumber);
@@ -357,7 +372,6 @@
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        // 顯示 PR 資訊
         document.getElementById('pr-title').textContent = data.title;
         document.getElementById('pr-state').textContent = `狀態: ${data.state}`;
         document.getElementById('pr-user').textContent = `作者: ${data.user || 'N/A'}`;
@@ -373,20 +387,19 @@
       prInfoDisplay.classList.add('hidden');
     })
     .finally(() => {
+      hideWaitingModal();
       btn.disabled = false;
-      btn.textContent = '🔍';
     });
   }
 
+  document.addEventListener('turbo:before-cache', resetLoadingIndicators);
+  document.addEventListener('turbo:load', resetLoadingIndicators);
+
   document.getElementById('pr-number-input').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      updateFlagsFromPr();
-    }
+    if (e.key === 'Enter') updateFlagsFromPr();
   });
 
   document.getElementById('owner-input').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      updateFlagsFromPr();
-    }
+    if (e.key === 'Enter') updateFlagsFromPr();
   });
 </script>

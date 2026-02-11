@@ -61,12 +61,6 @@
           id="import-btn"
           class="px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg hover:scale-105 active:bg-blue-800 active:scale-95 transition duration-200 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
           <span id="import-text">開始匯入</span>
-          <span id="import-spinner" class="hidden inline-block ml-2">
-            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </span>
         </button>
 
         <%= link_to "返回主頁", root_path,
@@ -80,6 +74,17 @@
 </div>
 
 <script>
+  function resetImportLoadingIndicators() {
+    const btn = document.getElementById('import-btn');
+    const text = document.getElementById('import-text');
+    const spinner = document.getElementById('import-spinner');
+    if (!btn || !text || !spinner) return;
+
+    btn.disabled = false;
+    text.textContent = '開始匯入';
+    spinner.classList.add('hidden');
+  }
+
   document.getElementById('import-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
@@ -146,5 +151,9 @@
       : 'mt-4 p-4 rounded-lg text-sm font-medium text-red-600 bg-red-50 border border-red-200';
     message.classList.remove('hidden');
   }
+
+  // Avoid Turbo restoring a cached "loading" UI when navigating back.
+  document.addEventListener('turbo:before-cache', resetImportLoadingIndicators);
+  document.addEventListener('turbo:load', resetImportLoadingIndicators);
 </script>
 
