@@ -73,78 +73,39 @@
   </div>
 </div>
 
-<script>
-  function resetImportLoadingIndicators() {
-    const btn = document.getElementById('import-btn');
-    const text = document.getElementById('import-text');
-    const spinner = document.getElementById('import-spinner');
-    if (!btn || !text || !spinner) return;
+<!-- 等待中彈出視窗（匯入時顯示，完成後自動消失） -->
+<div id="waiting-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" aria-hidden="true">
+  <div class="bg-white rounded-xl shadow-2xl px-8 py-6 flex flex-col items-center gap-4 min-w-[200px]">
+    <p id="waiting-modal-message" class="text-gray-800 font-medium">等待中...</p>
+    <p class="text-sm text-gray-500 animate-pulse">請稍候</p>
+  </div>
+</div>
 
-    btn.disabled = false;
-    text.textContent = '開始匯入';
-    spinner.classList.add('hidden');
+<script>
+  function showWaitingModal(message) {
+    message = message || '等待中...';
+    const modal = document.getElementById('waiting-modal');
+    const msgEl = document.getElementById('waiting-modal-message');
+    if (modal) modal.classList.remove('hidden');
+    if (msgEl) msgEl.textContent = message;
   }
 
-  document.getElementById('import-form').addEventListener('submit', function(e) {
-    e.preventDefault();
+  function hideWaitingModal() {
+    const modal = document.getElementById('waiting-modal');
+    if (modal) modal.classList.add('hidden');
+  }
 
-    const owner = document.getElementById('owner-input').value.trim();
-    const repo = document.getElementById('repo-input').value.trim();
-    const branch = document.getElementById('branch-input').value.trim() || 'main';
+  function resetImportLoadingIndicators() {
+    hideWaitingModal();
     const btn = document.getElementById('import-btn');
     const text = document.getElementById('import-text');
-    const spinner = document.getElementById('import-spinner');
-    const message = document.getElementById('message-indicator');
-
-    if (!owner || !repo) {
-      showMessage('❌ 請填寫 Owner 和 Repository 名稱', false);
-      return;
-    }
-
-    // 顯示載入狀態
-    btn.disabled = true;
-    text.textContent = '匯入中...';
-    spinner.classList.remove('hidden');
-    message.classList.add('hidden');
-
-    fetch('<%= code_analysis_index_path %>', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': '<%= form_authenticity_token %>'
-      },
-      body: JSON.stringify({
-        owner: owner,
-        repo: repo,
-        branch: branch
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        showMessage('✅ ' + data.message, true);
-        if (data.company_id) {
-          setTimeout(() => {
-            window.location.href = '<%= management_pages_path %>';
-          }, 2000);
-        }
-      } else {
-        showMessage('❌ ' + (data.error || '匯入失敗'), false);
-        btn.disabled = false;
-        text.textContent = '開始匯入';
-        spinner.classList.add('hidden');
-      }
-    })
-    .catch(error => {
-      showMessage('❌ 錯誤: ' + error.message, false);
-      btn.disabled = false;
-      text.textContent = '開始匯入';
-      spinner.classList.add('hidden');
-    });
-  });
+    if (btn) btn.disabled = false;
+    if (text) text.textContent = '開始匯入';
+  }
 
   function showMessage(msg, isSuccess) {
     const message = document.getElementById('message-indicator');
+    if (!message) return;
     message.textContent = msg;
     message.className = isSuccess
       ? 'mt-4 p-4 rounded-lg text-sm font-medium text-green-600 bg-green-50 border border-green-200'
@@ -152,8 +113,74 @@
     message.classList.remove('hidden');
   }
 
-  // Avoid Turbo restoring a cached "loading" UI when navigating back.
+  function attachImportForm() {
+    var form = document.getElementById('import-form');
+    if (!form) return;
+    // 避免重複綁定（Turbo 返回此頁時可能再觸發 turbo:load）
+    if (form._importSubmitAttached) return;
+    form._importSubmitAttached = true;
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      var owner = document.getElementById('owner-input').value.trim();
+      var repo = document.getElementById('repo-input').value.trim();
+      var branch = document.getElementById('branch-input').value.trim() || 'main';
+      var btn = document.getElementById('import-btn');
+      var text = document.getElementById('import-text');
+      var messageEl = document.getElementById('message-indicator');
+
+      if (!owner || !repo) {
+        showMessage('❌ 請填寫 Owner 和 Repository 名稱', false);
+        return;
+      }
+
+      btn.disabled = true;
+      if (messageEl) messageEl.classList.add('hidden');
+      showWaitingModal('匯入中...');
+
+      fetch('<%= code_analysis_index_path %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': '<%= form_authenticity_token %>'
+        },
+        body: JSON.stringify({
+          owner: owner,
+          repo: repo,
+          branch: branch
+        })
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        hideWaitingModal();
+        btn.disabled = false;
+        if (text) text.textContent = '開始匯入';
+        if (data.success) {
+          showMessage('✅ ' + data.message, true);
+          if (data.company_id) {
+            setTimeout(function() {
+              window.location.href = '<%= management_pages_path %>';
+            }, 2000);
+          }
+        } else {
+          showMessage('❌ ' + (data.error || '匯入失敗'), false);
+        }
+      })
+      .catch(function(error) {
+        hideWaitingModal();
+        btn.disabled = false;
+        if (text) text.textContent = '開始匯入';
+        showMessage('❌ 錯誤: ' + error.message, false);
+      });
+    });
+  }
+
   document.addEventListener('turbo:before-cache', resetImportLoadingIndicators);
-  document.addEventListener('turbo:load', resetImportLoadingIndicators);
+  document.addEventListener('turbo:load', function() {
+    resetImportLoadingIndicators();
+    attachImportForm();
+  });
+  document.addEventListener('DOMContentLoaded', attachImportForm);
 </script>
 
