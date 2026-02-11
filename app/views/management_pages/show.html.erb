@@ -188,11 +188,11 @@
                       </span>
                     <% end %>
                   </td>
-                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= action_page.relate_action&.join(', ') %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= action_page.relate_model&.join(', ') %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= action_page.select_column&.join(", ") %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= action_page.modify_column&.join(", ") %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= action_page.delete_column&.join(", ") %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.relate_action) %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.relate_model) %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= safe_join_utf8(action_page.select_column) %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= safe_join_utf8(action_page.modify_column) %></td>
+                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.delete_column) %></td>
                   <td class="px-4 py-3 border border-gray-300 w-[100px] break-words text-center">
                     <% if has_any_changes %>
                       <div class="flex flex-col space-y-1">
