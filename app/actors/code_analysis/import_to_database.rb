@@ -3,6 +3,7 @@
 module CodeAnalysis
   class ImportToDatabase < Actor
     input :project_name
+    input :github_owner
     input :analysis_results
 
     output :company
@@ -26,7 +27,7 @@ module CodeAnalysis
     end
 
     def create_company
-      self.company = Company.create!(name: project_name)
+      self.company = Company.create!(name: project_name, github_owner: github_owner)
     end
 
     def create_management_pages

@@ -26,7 +26,7 @@ namespace :github_analysis do
       puts "\n🔍 除錯建議："
       puts "1. 檢查 repository 是否存在: https://github.com/#{owner}/#{repo}"
       puts "2. 檢查 PR 是否存在: https://github.com/#{owner}/#{repo}/pull/#{pr_number}"
-      puts "3. 確認 GitHub Access Token 已設定: GITHUB_ACCESS_TOKEN"
+      puts "3. 確認 GitHub Token 已設定（credentials: github_classic_token，或舊鍵 github_access_token）"
       puts "4. 嘗試列出可用的 PR: rails github_analysis:list_prs[#{owner},#{repo}]"
     end
   end
@@ -92,7 +92,7 @@ namespace :github_analysis do
       puts "❌ GitHub API 連線失敗: #{e.message}"
       puts "\n請檢查："
       puts "1. 網路連線是否正常"
-      puts "2. GitHub Access Token 是否設定正確 (GITHUB_ACCESS_TOKEN)"
+      puts "2. GitHub Token 是否設定正確（優先 github_classic_token）"
       puts "3. Repository 和 PR 編號是否正確"
     end
   end
@@ -116,7 +116,7 @@ namespace :github_analysis do
 
     request = Net::HTTP::Get.new(uri)
     # 使用新的認證方式
-    request["Authorization"] = "Bearer #{GITHUB_ACCESS_TOKEN}" if GITHUB_ACCESS_TOKEN
+    request["Authorization"] = "Bearer #{GITHUB_API_TOKEN}" if GITHUB_API_TOKEN
     request["Accept"] = "application/vnd.github+json"
     request["X-GitHub-Api-Version"] = "2022-11-28"
     request["User-Agent"] = "Rails-App-GitHub-Analysis"

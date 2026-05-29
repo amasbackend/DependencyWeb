@@ -56,6 +56,7 @@ module CodeAnalysis
     def import_to_database
       result = CodeAnalysis::ImportToDatabase.result(
         project_name: project_name,
+        github_owner: owner,
         analysis_results: analysis_results,
       )
 

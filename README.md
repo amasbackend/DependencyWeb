@@ -110,12 +110,16 @@ rails dev_func:code_analysis
 
 ## 環境設定
 
-### 必要環境變數
+### GitHub Token（Rails credentials）
 
-```bash
-# GitHub API Token（用於存取 GitHub API）
-GITHUB_ACCESS_TOKEN=your_github_token_here
+GitHub 相關功能會從 **Rails encrypted credentials** 讀取權杖，而非一般環境變數。請執行 `EDITOR="code --wait" bin/rails credentials:edit`（或你慣用的編輯器）並加入：
+
+```yaml
+github_classic_token: ghp_xxxxxxxx   # 建議：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+github_access_token: ghp_xxxxxxxx    # 選填：僅在未設定 github_classic_token 時作為後備（舊鍵名）
 ```
+
+應用程式會**優先使用** `github_classic_token`，未設定時才使用 `github_access_token`。
 
 ### 安裝步驟
 
@@ -196,7 +200,7 @@ company=PrjJieZhou rails import:company
 
 ## 注意事項
 
-1. **GitHub API Token**: 必須設定 `GITHUB_ACCESS_TOKEN` 環境變數才能使用 GitHub 相關功能
+1. **GitHub API Token**: 必須在 credentials 設定 `github_classic_token`（或後備的 `github_access_token`）才能使用 GitHub 相關功能
 2. **API 限制**: GitHub API 有速率限制，大量匯入時請注意
 3. **分支名稱**: 如果專案使用 `main` 而非 `master`，請在匯入時指定正確的分支名稱
 4. **CSV 編碼**: CSV 檔案應使用 UTF-8 編碼

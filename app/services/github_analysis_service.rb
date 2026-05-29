@@ -7,7 +7,7 @@ class GithubAnalysisService
   require "base64"
 
   def initialize(access_token = nil)
-    @access_token = access_token || GITHUB_ACCESS_TOKEN
+    @access_token = access_token || GITHUB_API_TOKEN
     @base_url = "https://api.github.com"
     @api_version = "2022-11-28" # 使用穩定的 API 版本
   end

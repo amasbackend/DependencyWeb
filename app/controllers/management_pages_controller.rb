@@ -73,7 +73,6 @@ class ManagementPagesController < ApplicationController
 
   def update_flags_from_pr
     result = GithubAnalysis::UpdateFlags.result(
-      owner: params[:owner] || "AMASTek",
       pr_number: params[:pr_number],
       company_id: params[:id],
     )
@@ -86,9 +85,9 @@ class ManagementPagesController < ApplicationController
   end
 
   def get_pr_info
-    owner = params[:owner] || "AMASTek"
-    pr_number = params[:pr_number]
     company = Company.find(params[:id])
+    owner = company.github_owner.presence || "AMASTek"
+    pr_number = params[:pr_number]
     repo = company.name
 
     unless pr_number.present?

@@ -74,17 +74,8 @@
           重置 Flag
         </button>
         
-        <!-- Owner、PR Number 輸入框和送出按鈕 -->
+        <!-- PR Number 輸入框和送出按鈕（Owner 使用匯入時儲存於公司的 github_owner） -->
         <div class="flex items-center space-x-2 flex-wrap gap-2">
-          <div class="flex items-center space-x-1">
-            <label for="owner-input" class="text-sm text-gray-700 font-medium">Owner:</label>
-            <input 
-              type="text" 
-              id="owner-input" 
-              placeholder="例如: AMASTek"
-              class="border border-gray-300 rounded-lg px-3 py-2 w-32 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <span class="text-xs text-gray-500">建議: 'AMASTek', 'amashrm'</span>
-          </div>
           <div class="flex items-center space-x-1">
             <label for="pr-number-input" class="text-sm text-gray-700 font-medium">PR Number:</label>
             <input 
@@ -303,7 +294,6 @@
 
   function updateFlagsFromPr() {
     const prNumber = document.getElementById('pr-number-input').value.trim();
-    const owner = document.getElementById('owner-input').value.trim();
     
     if (!prNumber) {
       showMessage('❌ 請輸入 PR Number', false);
@@ -319,10 +309,7 @@
         'Content-Type': 'application/json',
         'X-CSRF-Token': '<%= form_authenticity_token %>'
       },
-      body: JSON.stringify({
-        owner: owner || 'AMASTek',
-        pr_number: prNumber
-      })
+      body: JSON.stringify({ pr_number: prNumber })
     })
     .then(response => response.json())
     .then(data => {
@@ -346,7 +333,6 @@
 
   function queryPrInfo() {
     const prNumber = document.getElementById('pr-number-input').value.trim();
-    const owner = document.getElementById('owner-input').value.trim();
     const btn = document.getElementById('query-pr-btn');
     const prInfoDisplay = document.getElementById('pr-info-display');
     
@@ -359,7 +345,6 @@
     showWaitingModal('查詢 PR 資訊中...');
 
     const url = new URL('<%= get_pr_info_management_page_path(@company) %>', window.location.origin);
-    url.searchParams.append('owner', owner || 'AMASTek');
     url.searchParams.append('pr_number', prNumber);
     
     fetch(url, {
@@ -396,10 +381,6 @@
   document.addEventListener('turbo:load', resetLoadingIndicators);
 
   document.getElementById('pr-number-input').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') updateFlagsFromPr();
-  });
-
-  document.getElementById('owner-input').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') updateFlagsFromPr();
   });
 </script>

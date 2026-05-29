@@ -2,7 +2,6 @@
 
 module GithubAnalysis
   class UpdateFlags < Actor
-    input :owner
     input :pr_number
     input :company_id
 
@@ -27,8 +26,10 @@ module GithubAnalysis
     def update_flags_from_pr
       fail!(error: "PR number 不能為空") if pr_number.blank?
 
+      github_owner = company.github_owner.presence || "AMASTek"
+
       flag_service = FlagUpdateService.new
-      flag_service.update_flags_from_pr(owner, repo, pr_number, company.name)
+      flag_service.update_flags_from_pr(github_owner, repo, pr_number, company.name)
 
       self.message = "GitHub PR 分析完成！"
     rescue StandardError => e
