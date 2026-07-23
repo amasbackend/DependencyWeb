@@ -9,7 +9,7 @@ RSpec.describe I18nGuidesController, type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("test/i18n")
     expect(response.body).to include("複製 AI 提示詞")
-    expect(response.body).to include("RelateDoc I18n")
+    expect(response.body).to include("專案 zh-TW I18n")
     expect(response.body).to include('name="project"')
     expect(response.body).to include('name="repo"')
     expect(response.body).not_to include("glossary.md")

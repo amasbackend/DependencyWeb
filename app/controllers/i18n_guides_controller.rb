@@ -39,17 +39,18 @@ class I18nGuidesController < ApplicationController
       end
 
     <<~PROMPT
-      請依下列 Cursor Skill，為母專案 **#{project_name}** 補齊 zh-TW I18n（model.yml / actor.yml / controller.yml）。
+      請依下列 Cursor Skill，在母專案 **#{project_name}** 的 repo 內補齊 zh-TW I18n。
       #{github_line}
 
-      ## 分支約定（必做）
-      1. 若尚無 `#{RECOMMENDED_BRANCH}` 分支，請建立並切換：`git checkout -b #{RECOMMENDED_BRANCH}`
-      2. 所有 locale 修改只提交到 `#{RECOMMENDED_BRANCH}`。
-      3. 完成後在 RelateDoc 對該專案「同步 GitHub 母資料」，分支填入：`#{RECOMMENDED_BRANCH}`。
+      ## 目標
+      - 只改該專案的 `config/locales/zh-TW/*.yml`
+      - 用詞以該專案前端 navbar、Vue、ERB、schema 為準
+      - 依 Skill 列出的路徑掃描 actors／permission_check／選單／欄位並補譯
 
-      ## 用詞來源
-      - 以該專案前端 navbar、Vue、ERB 實際顯示為準（勿直譯英文 class 名）
-      - 逐項對照 UI／schema 補 yml
+      ## 分支約定（必做）
+      1. 若尚無 `#{RECOMMENDED_BRANCH}`：`git checkout -b #{RECOMMENDED_BRANCH}`
+      2. locale 修改只提交到 `#{RECOMMENDED_BRANCH}`
+      3. 完成後 push，匯入端同步時分支填 `#{RECOMMENDED_BRANCH}`
 
       ## Skill 全文
       #{@skill_markdown}
