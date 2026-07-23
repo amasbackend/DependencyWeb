@@ -8,32 +8,27 @@ module GithubAnalysis
     output :repo
     output :company
     output :message
+    output :impact_summary
 
-    play :grep_company,
-         :update_flags_from_pr
+    play :analyze_pr_impact
 
     private
 
-    def grep_company
-      self.company = Company.find(company_id)
-      self.repo = company&.name
+    def analyze_pr_impact
+      result = GithubAnalysis::AnalyzePrImpact.result(
+        pr_number: pr_number,
+        company_id: company_id,
+      )
 
-      return if company
+      unless result.success?
+        fail!(error: result.error)
+        return
+      end
 
-      fail!(error: "Company not found")
-    end
-
-    def update_flags_from_pr
-      fail!(error: "PR number 不能為空") if pr_number.blank?
-
-      github_owner = company.github_owner.presence || "AMASTek"
-
-      flag_service = FlagUpdateService.new
-      flag_service.update_flags_from_pr(github_owner, repo, pr_number, company.name)
-
-      self.message = "GitHub PR 分析完成！"
-    rescue StandardError => e
-      fail!(error: e.message)
+      self.company = result.company
+      self.repo = result.repo
+      self.impact_summary = result.impact_summary
+      self.message = result.message
     end
   end
 end

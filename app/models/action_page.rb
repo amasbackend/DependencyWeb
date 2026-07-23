@@ -10,4 +10,6 @@ class ActionPage < ApplicationRecord
   belongs_to :company
   belongs_to :management_page
   has_many :relate_models, dependent: :destroy
+  has_many :entry_points, dependent: :nullify
+  has_many :shared_concerns, dependent: :destroy
 end

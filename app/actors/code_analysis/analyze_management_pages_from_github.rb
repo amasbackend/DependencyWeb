@@ -38,6 +38,7 @@ module CodeAnalysis
       # 獲取該管理頁面目錄下的所有 .rb 檔案
       action_files = github_service.get_directory_files(owner, repo, "app/actors/#{management_page_name}", branch)
                                    .select { |f| f[:path].end_with?(".rb") }
+                                   .reject { |f| f[:path].include?("/concerns/") }
 
       action_files.each do |file_info|
         file_content = github_service.get_file_content(owner, repo, file_info[:path], branch)
@@ -45,8 +46,10 @@ module CodeAnalysis
 
         content = file_content[:content]
         action_class_name = content[/class\s+([\w:]+)/, 1]
+        action_class_name ||= class_name_from_path(file_info[:path], management_page_name)
 
         next unless action_class_name
+        next unless content.match?(/<\s*Actor\b/) || content.match?(/class\s+[\w:]+\s*<\s*Actor\b/)
 
         puts "  動作頁面：#{action_class_name}"
 
@@ -81,6 +84,13 @@ module CodeAnalysis
       else
         puts "    （查無關聯模型）"
       end
+    end
+
+    def class_name_from_path(file_path, _management_page_name)
+      relative = file_path.sub(%r{^app/actors/}, "").sub(/\.rb\z/, "")
+      return nil if relative.blank?
+
+      relative.split("/").map { |part| part.camelize }.join("::")
     end
   end
 end

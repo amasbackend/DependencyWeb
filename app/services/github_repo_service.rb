@@ -49,7 +49,7 @@ class GithubRepoService
       file_data = JSON.parse(response.body)
       if file_data["type"] == "file" && file_data["content"]
         {
-          content: Base64.decode64(file_data["content"]),
+          content: decode_file_content(file_data["content"]),
           path: file_data["path"],
           sha: file_data["sha"],
         }
@@ -108,5 +108,9 @@ class GithubRepoService
     Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
       http.request(build_request(uri))
     end
+  end
+
+  def decode_file_content(encoded)
+    Base64.decode64(encoded).force_encoding("UTF-8")
   end
 end

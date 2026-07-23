@@ -30,6 +30,14 @@
             class: "px-3 py-2 rounded-lg text-sm font-medium #{params[:filter] == 'changed' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" do %>
             🔄 異動檔案
           <% end %>
+          <%= link_to management_page_path(@company, request.query_parameters.merge(view: 'qa')),
+            class: "px-3 py-2 rounded-lg text-sm font-medium #{@view_mode == 'qa' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" do %>
+            業務視圖
+          <% end %>
+          <%= link_to management_page_path(@company, request.query_parameters.merge(view: 'tech')),
+            class: "px-3 py-2 rounded-lg text-sm font-medium #{@view_mode == 'tech' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" do %>
+            技術視圖
+          <% end %>
         </div>
       </div>
     </div>
@@ -57,6 +65,46 @@
           🔄 目前顯示：僅已變更的項目
         </div>
       <% end %>
+    </div>
+  </div>
+
+  <!-- GitHub 母資料同步 -->
+  <div class="pt-2 pb-4">
+    <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+      <h3 class="text-lg font-semibold text-gray-800 mb-2">GitHub 母資料同步</h3>
+      <p class="text-sm text-gray-600 mb-3">
+        從 GitHub 重新分析並匯入關聯資料，確保比對用的母資料為最新版本。
+        <% if @company.github_owner.present? %>
+          <span class="block mt-1 text-xs text-gray-500">
+            Repository: <%= @company.github_owner %>/<%= @company.name %>
+            · 分支: <%= @company.github_branch.presence || "master" %>
+            <% if @company.last_synced_at.present? %>
+              · 上次同步: <%= @company.last_synced_at.strftime("%Y-%m-%d %H:%M") %>
+            <% end %>
+          </span>
+        <% end %>
+      </p>
+      <div class="flex items-center space-x-4 flex-wrap gap-2">
+        <div class="flex items-center space-x-2">
+          <label for="sync-branch-input" class="text-sm text-gray-700 font-medium">分支:</label>
+          <input
+            type="text"
+            id="sync-branch-input"
+            value="<%= @company.github_branch.presence || 'test/i18n' %>"
+            placeholder="test/i18n"
+            class="border border-gray-300 rounded-lg px-3 py-2 w-36 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500">
+        </div>
+        <button
+          id="sync-from-github-btn"
+          type="button"
+          class="px-4 py-2 bg-green-600 text-black rounded-lg shadow-md hover:bg-green-700 hover:shadow-lg hover:scale-105 active:bg-green-800 active:scale-95 transition duration-200 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          onclick="syncFromGithub()">
+          🔄 同步 GitHub 母資料
+        </button>
+        <%= link_to "I18n Skill 翻譯指引", i18n_guide_path,
+          class: "px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition text-sm font-medium" %>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">建議以 <code class="bg-white px-1 rounded border">test/i18n</code> 分支存放 locale 補齊結果，再由此同步匯入。</p>
     </div>
   </div>
 
@@ -99,6 +147,13 @@
             onclick="updateFlagsFromPr()">
             分析 PR
           </button>
+          <button
+            id="export-test-scope-btn"
+            type="button"
+            class="px-4 py-2 bg-purple-600 text-white rounded-lg shadow-md hover:bg-purple-700 hover:shadow-lg hover:scale-105 active:bg-purple-800 active:scale-95 transition duration-200 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick="exportTestScopeReport()">
+            匯出測試清單
+          </button>
         </div>
       </div>
       <!-- PR 資訊顯示區域 -->
@@ -130,60 +185,123 @@
     </div>
   </div>
 
+  <!-- 測試清單預覽／複製 -->
+  <div id="test-scope-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" aria-hidden="true">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800">手動迴歸測試清單</h3>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            id="copy-test-scope-btn"
+            class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+            onclick="copyTestScopeMarkdown()">
+            📋 複製 Markdown
+          </button>
+          <button
+            type="button"
+            id="download-test-scope-btn"
+            class="px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-800"
+            onclick="downloadTestScopeMarkdown()">
+            ⬇ 下載 .md
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300"
+            onclick="hideTestScopeModal()">
+            關閉
+          </button>
+        </div>
+      </div>
+      <div class="px-5 py-2 text-xs text-gray-500 border-b border-gray-100" id="test-scope-copy-status"></div>
+      <textarea
+        id="test-scope-markdown"
+        readonly
+        class="flex-1 w-full p-5 font-mono text-xs text-gray-800 bg-gray-50 outline-none resize-none overflow-auto"
+        style="min-height: 60vh;"></textarea>
+    </div>
+  </div>
+
   <!-- 表格 -->
   <div class="pt-2">
     <table class="w-full border border-gray-300 border-collapse bg-white rounded-lg shadow-md table-fixed">
       <thead class="sticky top-[72px] z-10">
         <tr class="bg-gray-200 text-gray-700 uppercase text-sm shadow-md">
-          <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Management Page</th>
-          <th class="px-4 py-3 border border-gray-300 w-[250px] break-words bg-gray-200">Action Page</th>
-          <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Relate Action</th>
-          <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Relate Model</th>
-          <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Select Column</th>
-          <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Modify Column</th>
-          <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Delete Column</th>
+          <% if @view_mode == 'qa' %>
+            <th class="px-4 py-3 border border-gray-300 w-[220px] break-words bg-gray-200">功能路徑</th>
+            <th class="px-4 py-3 border border-gray-300 w-[220px] break-words bg-gray-200">操作 / Actor</th>
+            <th class="px-4 py-3 border border-gray-300 w-[120px] break-words bg-gray-200">權限</th>
+            <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">關聯 Model</th>
+            <th class="px-4 py-3 border border-gray-300 w-[180px] break-words bg-gray-200">查詢欄位</th>
+            <th class="px-4 py-3 border border-gray-300 w-[180px] break-words bg-gray-200">修改欄位</th>
+            <th class="px-4 py-3 border border-gray-300 w-[120px] break-words bg-gray-200">刪除欄位</th>
+          <% else %>
+            <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Management Page</th>
+            <th class="px-4 py-3 border border-gray-300 w-[250px] break-words bg-gray-200">Action Page</th>
+            <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Relate Action</th>
+            <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Relate Model</th>
+            <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Select Column</th>
+            <th class="px-4 py-3 border border-gray-300 w-[200px] break-words bg-gray-200">Modify Column</th>
+            <th class="px-4 py-3 border border-gray-300 w-[150px] break-words bg-gray-200">Delete Column</th>
+          <% end %>
           <th class="px-4 py-3 border border-gray-300 w-[100px] break-words bg-gray-200">Status</th>
         </tr>
       </thead>
       <tbody>
           <% @management_pages.each do |management_page| %>
             <tr class="bg-blue-100 font-semibold">
-              <td colspan="8" class="px-4 py-4 border border-gray-300 text-lg break-words"><%= management_page.name %></td>
+              <td colspan="8" class="px-4 py-4 border border-gray-300 text-lg break-words"><%= @view_mode == 'qa' ? qa_management_page_label(@company, management_page) : management_page.name %></td>
             </tr>
             
             <% action_pages = @action_pages.select { |action_page| action_page[:management_page_id] == management_page.id } %>
             
             <% if action_pages&.any? %>
               <% action_pages.each do |action_page| %>
-                <% 
-                  # 檢查 action_page 或任何 relate_model 是否有 changed_flag
+                <%
                   has_changed_action = action_page.changed_flag
                   has_changed_models = action_page.relate_models.any? { |rm| rm.changed_flag }
                   has_any_changes = has_changed_action || has_changed_models
-                  
-                  # 根據任何變更決定行的樣式
                   row_class = has_any_changes ? "bg-yellow-100 hover:bg-yellow-200 border-l-4 border-yellow-500" : "hover:bg-gray-100"
+                  entry = qa_entry_point_for(action_page, @entry_points_by_action)
+                  model_hint = Array(action_page.relate_model).first
                 %>
                 <tr class="<%= row_class %>">
-                  <td class="px-4 py-3 border border-gray-300 w-[200px]"></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[250px] text-blue-600 font-bold break-words">
-                    <%= action_page.name %>
-                    <% if has_changed_action %>
-                      <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
-                        🔄 Action
-                      </span>
-                    <% end %>
-                    <% if has_changed_models %>
-                      <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
-                        📊 Model
-                      </span>
-                    <% end %>
-                  </td>
-                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.relate_action) %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.relate_model) %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= safe_join_utf8(action_page.select_column) %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= safe_join_utf8(action_page.modify_column) %></td>
-                  <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.delete_column) %></td>
+                  <% if @view_mode == 'qa' %>
+                    <td class="px-4 py-3 border border-gray-300 break-words text-sm text-gray-800">
+                      <%= qa_menu_path(@company, action_page, @entry_points_by_action, @ui_menus_by_controller) %>
+                      <% if entry %>
+                        <div class="text-xs text-gray-500 mt-1"><%= qa_entry_summary(entry) %></div>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 border border-gray-300 break-words">
+                      <span class="font-semibold text-indigo-700"><%= qa_operation_label(@company, action_page) %></span>
+                      <% if action_page.channel == 'api' %>
+                        <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-700 text-white">API</span>
+                      <% end %>
+                      <div class="text-xs text-blue-600 mt-1"><%= action_page.name %></div>
+                    </td>
+                    <td class="px-4 py-3 border border-gray-300 break-words text-xs"><%= qa_permission_label(@company, entry) %></td>
+                    <td class="px-4 py-3 border border-gray-300 break-words text-sm"><%= qa_model_list(@company, action_page.relate_model) %></td>
+                    <td class="px-4 py-3 border border-gray-300 break-words text-sm"><%= qa_column_labels(@company, model_hint, action_page.select_column) %></td>
+                    <td class="px-4 py-3 border border-gray-300 break-words text-sm"><%= qa_column_labels(@company, model_hint, action_page.modify_column) %></td>
+                    <td class="px-4 py-3 border border-gray-300 break-words text-sm"><%= qa_column_labels(@company, model_hint, action_page.delete_column) %></td>
+                  <% else %>
+                    <td class="px-4 py-3 border border-gray-300 w-[200px]"></td>
+                    <td class="px-4 py-3 border border-gray-300 w-[250px] text-blue-600 font-bold break-words">
+                      <%= action_page.name %>
+                      <% if has_changed_action %>
+                        <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">🔄 Action</span>
+                      <% end %>
+                      <% if has_changed_models %>
+                        <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-200 text-orange-800">📊 Model</span>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.relate_action) %></td>
+                    <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.relate_model) %></td>
+                    <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= safe_join_utf8(action_page.select_column) %></td>
+                    <td class="px-4 py-3 border border-gray-300 w-[200px] break-words"><%= safe_join_utf8(action_page.modify_column) %></td>
+                    <td class="px-4 py-3 border border-gray-300 w-[150px] break-words"><%= safe_join_utf8(action_page.delete_column) %></td>
+                  <% end %>
                   <td class="px-4 py-3 border border-gray-300 w-[100px] break-words text-center">
                     <% if has_any_changes %>
                       <div class="flex flex-col space-y-1">
@@ -197,11 +315,23 @@
                             📊 Model
                           </span>
                         <% end %>
+                        <% if action_page.respond_to?(:has_spec) && !action_page.has_spec %>
+                          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            無 Spec
+                          </span>
+                        <% end %>
                       </div>
                     <% else %>
-                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
-                        ✓ 正常
-                      </span>
+                      <div class="flex flex-col space-y-1">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                          ✓ 正常
+                        </span>
+                        <% if action_page.respond_to?(:has_spec) && !action_page.has_spec %>
+                          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            無 Spec
+                          </span>
+                        <% end %>
+                      </div>
                     <% end %>
                   </td>
                 </tr>
@@ -239,8 +369,12 @@
     const resetBtn = document.getElementById('reset-flags-btn');
     const updateBtn = document.getElementById('update-flags-btn');
     const queryBtn = document.getElementById('query-pr-btn');
+    const syncBtn = document.getElementById('sync-from-github-btn');
+    const exportBtn = document.getElementById('export-test-scope-btn');
     if (resetBtn) resetBtn.disabled = false;
     if (updateBtn) updateBtn.disabled = false;
+    if (syncBtn) syncBtn.disabled = false;
+    if (exportBtn) exportBtn.disabled = false;
     if (queryBtn) {
       queryBtn.disabled = false;
       queryBtn.textContent = '🔍查詢 PR 資訊';
@@ -259,6 +393,52 @@
   function setButtonDisabled(btnId, disabled) {
     const btn = document.getElementById(btnId);
     if (btn) btn.disabled = disabled;
+  }
+
+  function syncFromGithub() {
+    const branchInput = document.getElementById('sync-branch-input');
+    const branch = branchInput ? branchInput.value.trim() || 'master' : 'master';
+
+    if (!confirm('將從 GitHub 重新匯入母資料，現有關聯資料與 PR Flag 會被清除並重建。確定要同步嗎？')) {
+      return;
+    }
+
+    setButtonDisabled('sync-from-github-btn', true);
+    showWaitingModal('同步母資料中，請稍候...');
+
+    fetch('<%= sync_from_github_management_page_path(@company) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': '<%= form_authenticity_token %>'
+      },
+      body: JSON.stringify({ branch: branch })
+    })
+    .then(response => response.json())
+    .then(data => {
+      hideWaitingModal();
+      setButtonDisabled('sync-from-github-btn', false);
+      if (data.success) {
+        const stats = data.statistics || {};
+        const detail = [
+          data.message,
+          stats.management_pages_count != null ? `管理頁面: ${stats.management_pages_count}` : null,
+          stats.action_pages_count != null ? `Action: ${stats.action_pages_count}` : null,
+          stats.relate_models_count != null ? `Model: ${stats.relate_models_count}` : null,
+        ].filter(Boolean).join(' · ');
+        showMessage('✅ ' + detail, true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        showMessage('❌ ' + (data.error || '同步失敗'), false);
+      }
+    })
+    .catch(error => {
+      hideWaitingModal();
+      setButtonDisabled('sync-from-github-btn', false);
+      showMessage('❌ 錯誤: ' + error.message, false);
+    });
   }
 
   function resetFlags() {
@@ -316,7 +496,15 @@
       hideWaitingModal();
       setButtonDisabled('update-flags-btn', false);
       if (data.success) {
-        showMessage('✅ ' + data.message, true);
+        let detail = data.message;
+        if (data.impact_summary) {
+          const s = data.impact_summary;
+          const levels = s.by_level || {};
+          const propagated = (levels.caller || 0) + (levels.caller_l2 || 0) + (levels.model_consumer || 0);
+          detail += ' · 影響記錄 ' + (s.total_impacts || 0);
+          if (propagated > 0) detail += '（含傳播 ' + propagated + '）';
+        }
+        showMessage('✅ ' + detail, true);
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -375,6 +563,119 @@
       hideWaitingModal();
       btn.disabled = false;
     });
+  }
+
+  function exportTestScopeReport() {
+    const prNumber = document.getElementById('pr-number-input').value.trim();
+
+    if (!prNumber) {
+      showMessage('❌ 請先輸入 PR Number（需先分析 PR 或輸入欲匯出的 PR 編號）', false);
+      return;
+    }
+
+    setButtonDisabled('export-test-scope-btn', true);
+    showWaitingModal('產生測試清單中...');
+
+    const url = new URL('<%= test_scope_report_management_page_path(@company) %>', window.location.origin);
+    url.searchParams.append('pr_number', prNumber);
+    url.searchParams.append('report_view', 'qa');
+
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-Token': '<%= form_authenticity_token %>'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      hideWaitingModal();
+      setButtonDisabled('export-test-scope-btn', false);
+      if (data.success && data.markdown) {
+        window.__testScopeMarkdown = data.markdown;
+        window.__testScopePrNumber = prNumber;
+        const textarea = document.getElementById('test-scope-markdown');
+        if (textarea) textarea.value = data.markdown;
+        const status = document.getElementById('test-scope-copy-status');
+        if (status) status.textContent = '可直接複製下方 Markdown，或下載檔案。';
+        showTestScopeModal();
+        showMessage('✅ 測試清單已產生', true);
+      } else {
+        showMessage('❌ ' + (data.error || '產生測試清單失敗'), false);
+      }
+    })
+    .catch(error => {
+      hideWaitingModal();
+      setButtonDisabled('export-test-scope-btn', false);
+      showMessage('❌ 錯誤: ' + error.message, false);
+    });
+  }
+
+  function showTestScopeModal() {
+    const modal = document.getElementById('test-scope-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  function hideTestScopeModal() {
+    const modal = document.getElementById('test-scope-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function copyTestScopeMarkdown() {
+    const text = window.__testScopeMarkdown || (document.getElementById('test-scope-markdown') || {}).value || '';
+    const status = document.getElementById('test-scope-copy-status');
+    const btn = document.getElementById('copy-test-scope-btn');
+    if (!text) {
+      if (status) status.textContent = '沒有可複製的內容';
+      return;
+    }
+
+    const done = () => {
+      if (status) status.textContent = '已複製到剪貼簿';
+      if (btn) {
+        const original = btn.textContent;
+        btn.textContent = '✅ 已複製';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done, status));
+    } else {
+      fallbackCopy(text, done, status);
+    }
+  }
+
+  function fallbackCopy(text, done, status) {
+    const textarea = document.getElementById('test-scope-markdown');
+    if (!textarea) {
+      if (status) status.textContent = '複製失敗，請手動選取內容';
+      return;
+    }
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      done();
+    } catch (e) {
+      if (status) status.textContent = '複製失敗，請手動選取內容';
+    }
+  }
+
+  function downloadTestScopeMarkdown() {
+    const text = window.__testScopeMarkdown || '';
+    const prNumber = window.__testScopePrNumber || 'unknown';
+    if (!text) return;
+
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pr_' + prNumber + '_manual_regression.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   document.addEventListener('turbo:before-cache', resetLoadingIndicators);

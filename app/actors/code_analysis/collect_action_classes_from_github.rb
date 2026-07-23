@@ -16,16 +16,25 @@ module CodeAnalysis
 
       files.each do |file_info|
         next unless file_info[:path].end_with?(".rb")
+        next if file_info[:path].include?("/concerns/")
 
         file_content = github_service.get_file_content(owner, repo, file_info[:path], branch)
         next unless file_content
 
         content = file_content[:content]
+        next unless actor_class?(content)
+
         class_name = content[/class\s+([\w:]+)/, 1]
         action_classes << class_name if class_name
       end
 
       puts "發現的 Action Classes: #{action_classes.count} 個"
+    end
+
+    private
+
+    def actor_class?(content)
+      content.match?(/class\s+[\w:]+\s*<\s*Actor\b/)
     end
   end
 end

@@ -4,7 +4,9 @@ module CodeAnalysis
   class ImportToDatabase < Actor
     input :project_name
     input :github_owner
+    input :github_branch, default: "master"
     input :analysis_results
+    input :existing_company, default: nil
 
     output :company
     output :statistics
@@ -23,11 +25,36 @@ module CodeAnalysis
     private
 
     def delete_existing_records
+      if existing_company
+        existing_company.shared_concerns.destroy_all
+        existing_company.entry_points.destroy_all
+        existing_company.ui_menus.destroy_all
+        existing_company.locale_metadata&.destroy
+        existing_company.action_pages.destroy_all
+        existing_company.management_pages.destroy_all
+        self.company = existing_company
+        return
+      end
+
       Company.where(name: project_name).destroy_all
     end
 
     def create_company
-      self.company = Company.create!(name: project_name, github_owner: github_owner)
+      if company
+        company.update!(
+          github_owner: github_owner,
+          github_branch: github_branch,
+          last_synced_at: Time.current,
+        )
+        return
+      end
+
+      self.company = Company.create!(
+        name: project_name,
+        github_owner: github_owner,
+        github_branch: github_branch,
+        last_synced_at: Time.current,
+      )
     end
 
     def create_management_pages
@@ -54,14 +81,38 @@ module CodeAnalysis
           select_column: action_page_info[:select_column],
           modify_column: action_page_info[:modify_column],
           delete_column: action_page_info[:delete_column],
+          source_file_path: action_page_info[:source_file_path],
+          play_chain: action_page_info[:play_chain] || [],
+          operation_type: action_page_info[:operation_type],
+          blueprint_names: action_page_info[:blueprint_names] || [],
+          channel: infer_channel(action_page_name, action_page_info[:source_file_path]),
         )
 
+        create_shared_concerns(action_page, action_page_info[:concern_names])
         create_relate_models(management_page, action_page, action_page_info)
       end
     end
 
     def extract_relate_model_keys(relate_models)
       relate_models.is_a?(Hash) ? relate_models.keys : []
+    end
+
+    def infer_channel(action_page_name, source_file_path)
+      return "api" if action_page_name.start_with?("Api::")
+      return "api" if source_file_path.to_s.include?("/actors/api/")
+
+      "web"
+    end
+
+    def create_shared_concerns(action_page, concern_names)
+      Array(concern_names).each do |concern_name|
+        SharedConcern.create!(
+          company: company,
+          action_page: action_page,
+          concern_name: concern_name,
+          concern_file_path: "app/actors/concerns/#{concern_name.underscore}.rb",
+        )
+      end
     end
 
     def create_relate_models(management_page, action_page, action_page_info)

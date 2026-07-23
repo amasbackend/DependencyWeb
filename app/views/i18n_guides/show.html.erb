@@ -1,0 +1,136 @@
+<div class="w-full mx-auto max-w-5xl px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <%= link_to "⬅ 返回主頁", root_path,
+      class: "inline-block px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition text-sm" %>
+    <h1 class="text-2xl font-bold text-gray-800">I18n Skill 翻譯指引</h1>
+    <div class="w-24"></div>
+  </div>
+
+  <!-- 分支建議 -->
+  <div class="bg-amber-50 border border-amber-300 rounded-xl p-5 mb-6">
+    <h2 class="text-lg font-semibold text-amber-900 mb-2">建議匯入分支：<code class="px-1.5 py-0.5 bg-white rounded border"><%= @recommended_branch %></code></h2>
+    <ol class="list-decimal list-inside text-sm text-amber-950 space-y-1 mb-3">
+      <li>在<strong>母專案 repo</strong>建立並切換：<code class="bg-white px-1 rounded border">git checkout -b <%= @recommended_branch %></code></li>
+      <li>將下方 Skill／AI 提示詞貼給 AI，於該分支補齊 <code class="bg-white px-1 rounded border">config/locales/zh-TW/*.yml</code></li>
+      <li>push 後，在 RelateDoc 專案頁「同步 GitHub 母資料」時，分支填 <strong><%= @recommended_branch %></strong></li>
+    </ol>
+    <div class="flex flex-wrap gap-2 items-center">
+      <button type="button"
+        class="px-3 py-1.5 bg-amber-700 text-white rounded-lg text-sm hover:bg-amber-800"
+        onclick="copyText(<%= @recommended_branch.to_json %>, 'branch-copy-status')">
+        複製分支名稱
+      </button>
+      <button type="button"
+        class="px-3 py-1.5 bg-white border border-amber-400 text-amber-900 rounded-lg text-sm hover:bg-amber-100"
+        onclick="copyText(<%= "git checkout -b #{@recommended_branch}".to_json %>, 'branch-copy-status')">
+        複製建立分支指令
+      </button>
+      <span id="branch-copy-status" class="text-xs text-amber-800"></span>
+    </div>
+    <% if @companies.any? %>
+      <div class="mt-4 pt-3 border-t border-amber-200">
+        <p class="text-xs text-amber-900 mb-2">選擇專案以產生含 repo 名稱的 AI 提示詞，並前往同步母資料：</p>
+        <div class="flex flex-wrap gap-2">
+          <% @companies.each do |company| %>
+            <%= link_to company.name, i18n_guide_path(company_id: company.id),
+              class: "px-3 py-1.5 rounded-lg text-sm border #{@selected_company&.id == company.id ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white border-amber-300 text-blue-700 hover:bg-amber-100'}" %>
+          <% end %>
+        </div>
+        <% if @selected_company %>
+          <p class="text-xs text-amber-800 mt-2">
+            目前選定：<strong><%= @selected_company.name %></strong>
+            <% if @selected_company.github_owner.present? %>
+              （<%= @selected_company.github_owner %>/<%= @selected_company.name %>）
+            <% end %>
+            · <%= link_to "前往同步", management_page_path(@selected_company, view: "qa"), class: "underline" %>
+          </p>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- 快速複製 -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white border border-indigo-200 rounded-xl p-4 shadow-sm">
+      <h3 class="font-semibold text-gray-800 mb-1">AI 提示詞</h3>
+      <p class="text-xs text-gray-500 mb-3">含 Skill + <%= @recommended_branch %> 分支約定<%= @selected_company ? "（已帶入 #{@selected_company.name}）" : "" %>。</p>
+      <button type="button"
+        class="w-full px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+        onclick="copyFrom('ai-prompt-text', 'ai-prompt-status')">
+        📋 複製 AI 提示詞
+      </button>
+      <p id="ai-prompt-status" class="text-xs text-gray-500 mt-2 min-h-[1rem]"></p>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <h3 class="font-semibold text-gray-800 mb-1">SKILL.md</h3>
+      <p class="text-xs text-gray-500 mb-3"><code class="text-[11px]"><%= @skill_path %></code></p>
+      <button type="button"
+        class="w-full px-3 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-900"
+        onclick="copyFrom('skill-text', 'skill-status')">
+        📋 複製 SKILL
+      </button>
+      <p id="skill-status" class="text-xs text-gray-500 mt-2 min-h-[1rem]"></p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden mb-6">
+    <div class="flex items-center justify-between px-4 py-3 bg-indigo-50 border-b border-indigo-100">
+      <h2 class="font-semibold text-indigo-900">AI 提示詞預覽</h2>
+      <button type="button" class="text-xs px-2 py-1 bg-white border rounded hover:bg-gray-50"
+        onclick="copyFrom('ai-prompt-text', 'ai-prompt-status')">複製</button>
+    </div>
+    <textarea id="ai-prompt-text" readonly
+      class="w-full p-4 font-mono text-xs text-gray-800 bg-gray-50 outline-none resize-y"
+      style="min-height: 280px;"><%= @ai_prompt %></textarea>
+  </div>
+
+  <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200">
+      <h2 class="font-semibold text-gray-800">SKILL.md</h2>
+      <button type="button" class="text-xs px-2 py-1 bg-white border rounded hover:bg-gray-50"
+        onclick="copyFrom('skill-text', 'skill-status')">複製</button>
+    </div>
+    <textarea id="skill-text" readonly
+      class="w-full p-4 font-mono text-xs text-gray-800 bg-white outline-none resize-y"
+      style="min-height: 420px;"><%= @skill_markdown %></textarea>
+  </div>
+</div>
+
+<script>
+  function copyText(text, statusId) {
+    const status = document.getElementById(statusId);
+    const done = () => { if (status) status.textContent = '已複製'; };
+    const fail = () => { if (status) status.textContent = '複製失敗，請手動選取'; };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fail);
+      return;
+    }
+    fail();
+  }
+
+  function copyFrom(textareaId, statusId) {
+    const el = document.getElementById(textareaId);
+    const status = document.getElementById(statusId);
+    if (!el) return;
+
+    const text = el.value || '';
+    const done = () => { if (status) status.textContent = '已複製'; };
+    const fail = () => {
+      el.focus();
+      el.select();
+      try {
+        document.execCommand('copy');
+        done();
+      } catch (e) {
+        if (status) status.textContent = '複製失敗，請手動選取';
+      }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
+</script>

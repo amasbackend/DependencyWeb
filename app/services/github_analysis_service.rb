@@ -73,32 +73,55 @@ class GithubAnalysisService
     raise "PR 不存在或無法存取: #{owner}/#{repo} PR ##{pr_number} (狀態碼: #{pr_check[:status_code]})" unless pr_check[:exists]
 
     files = get_pr_files(owner, repo, pr_number)
+    classifier = PrFileClassifierService.new
+    migration_analyzer = MigrationDiffAnalyzerService.new
+    classified = classifier.classify_files(files)
 
     # 提取變更的檔案路徑
     changed_files = files.map { |file| file["filename"] }
 
     # 分析 actors 變更（傳入 owner 和 repo 以便取得檔案內容）
-    actor_changes = analyze_actor_changes(changed_files, owner, repo)
+    actor_changes = analyze_actor_changes(changed_files, owner, repo, files)
 
     # 分析 model 變更
-    model_changes = analyze_model_changes(changed_files)
+    model_changes = analyze_model_changes(changed_files, files)
+
+    controller_changes = analyze_controller_changes(classified["controller"], classifier)
+    migration_changes = analyze_migration_changes(classified["migration"], migration_analyzer)
+    concern_changes = analyze_concern_changes(classified["concern"])
+    blueprint_changes = analyze_blueprint_changes(classified["blueprint"])
+    route_changes = classified["route"].map do |file|
+      { file_path: file[:filename], change_type: file[:status] }
+    end
+
+    column_impacts = migration_changes.flat_map { |change| change[:column_impacts] }
 
     {
       changed_files: changed_files,
       actor_changes: actor_changes,
       model_changes: model_changes,
+      controller_changes: controller_changes,
+      migration_changes: migration_changes,
+      concern_changes: concern_changes,
+      blueprint_changes: blueprint_changes,
+      route_changes: route_changes,
+      classified_counts: classified.transform_values(&:size),
+      column_impacts: column_impacts,
     }
   end
 
   private
 
   # 分析 actors 變更
-  def analyze_actor_changes(changed_files, owner, repo)
+  def analyze_actor_changes(changed_files, owner, repo, files = [])
     actor_changes = []
+    status_by_file = files.index_by { |f| f["filename"] }
 
     changed_files.each do |file_path|
       # 檢查是否為 actors 目錄下的檔案，但排除 concerns 目錄（通常是 module，不是 actor）
       next unless file_path.match?(%r{^app/actors/.*\.rb$}) && !file_path.match?(%r{^app/actors/concerns/})
+
+      status = status_by_file[file_path]&.dig("status") || "modified"
 
       # 嘗試從 GitHub API 取得檔案內容來解析 class name
       class_name = extract_class_name_from_github_file(file_path, owner, repo)
@@ -107,7 +130,7 @@ class GithubAnalysisService
         actor_changes << {
           actor_name: class_name,
           file_path: file_path,
-          change_type: determine_change_type(file_path),
+          change_type: status,
         }
       elsif (match = file_path.match(%r{^app/actors/.*/([^/]+)\.rb$}))
         # 如果無法取得檔案內容，則從檔案路徑推斷
@@ -116,7 +139,7 @@ class GithubAnalysisService
           actor_changes << {
             actor_name: actor_name,
             file_path: file_path,
-            change_type: determine_change_type(file_path),
+            change_type: status,
           }
         end
       end
@@ -126,8 +149,9 @@ class GithubAnalysisService
   end
 
   # 分析 model 變更
-  def analyze_model_changes(changed_files)
+  def analyze_model_changes(changed_files, files = [])
     model_changes = []
+    status_by_file = files.index_by { |f| f["filename"] }
 
     changed_files.each do |file_path|
       # 檢查是否為 models 目錄下的檔案
@@ -139,11 +163,63 @@ class GithubAnalysisService
       model_changes << {
         model_name: model_name,
         file_path: file_path,
-        change_type: determine_change_type(file_path),
+        change_type: status_by_file[file_path]&.dig("status") || "modified",
       }
     end
 
     model_changes
+  end
+
+  def analyze_controller_changes(controller_files, classifier)
+    controller_files.filter_map do |file|
+      path = classifier.controller_path_from_file(file[:filename])
+      next unless path
+
+      {
+        controller_path: path,
+        file_path: file[:filename],
+        change_type: file[:status],
+      }
+    end
+  end
+
+  def analyze_migration_changes(migration_files, migration_analyzer)
+    migration_files.map do |file|
+      column_impacts = migration_analyzer.analyze_file(file)
+      {
+        file_path: file[:filename],
+        change_type: file[:status],
+        column_impacts: column_impacts,
+      }
+    end
+  end
+
+  def analyze_concern_changes(concern_files)
+    parser = ConcernParserService.new
+    concern_files.filter_map do |file|
+      concern_name = parser.concern_name_from_file_path(file[:filename])
+      next unless concern_name
+
+      {
+        concern_name: concern_name,
+        file_path: file[:filename],
+        change_type: file[:status],
+      }
+    end
+  end
+
+  def analyze_blueprint_changes(blueprint_files)
+    parser = BlueprintParserService.new
+    blueprint_files.filter_map do |file|
+      blueprint_name = parser.blueprint_name_from_file_path(file[:filename])
+      next unless blueprint_name
+
+      {
+        blueprint_name: blueprint_name,
+        file_path: file[:filename],
+        change_type: file[:status],
+      }
+    end
   end
 
   # 從 GitHub 檔案內容中提取 class name
@@ -166,7 +242,7 @@ class GithubAnalysisService
         file_data = JSON.parse(response.body)
         if file_data["content"]
           # 解碼 base64 內容
-          content = Base64.decode64(file_data["content"])
+          content = Base64.decode64(file_data["content"]).force_encoding("UTF-8")
 
           # 顯示檔案內容的前幾行用於除錯
           puts "📄 檔案 #{file_path} 內容預覽:"

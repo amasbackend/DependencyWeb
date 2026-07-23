@@ -3,7 +3,11 @@
   <div class="relative flex items-center justify-center my-6">
     <h1 class="text-4xl font-extrabold text-gray-800">📂 關聯文件</h1>
   </div>
-  <div class="absolute right-0">
+  <div class="absolute right-0 flex items-center gap-2 pr-4">
+    <%= link_to i18n_guide_path,
+          class: "px-6 py-3 bg-indigo-600 text-white border border-indigo-700 rounded-lg shadow-md hover:bg-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95 transition duration-200 text-sm font-medium" do %>
+      🌐 I18n Skill 翻譯指引
+    <% end %>
     <%= link_to new_code_analysis_path,
           class: "px-6 py-3 bg-white text-black border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg hover:scale-105 active:bg-gray-100 active:scale-95 transition duration-200 text-sm font-medium" do %>
       ➕ GitHub 專案匯入

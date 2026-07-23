@@ -14,10 +14,11 @@ namespace :github_analysis do
 
     begin
       flag_service = FlagUpdateService.new
-      flag_service.update_flags_from_pr(owner, repo, pr_number, company_name)
+      summary = flag_service.update_flags_from_pr(owner, repo, pr_number, company_name)
       flag_service.show_flag_statistics(company_name)
 
       puts "\n✅ GitHub PR 分析完成！"
+      puts "影響記錄: #{summary[:total_impacts]} 筆"
     rescue StandardError => e
       puts "❌ 錯誤: #{e.message}"
       puts e.backtrace.first(5).join("\n")
@@ -106,6 +107,41 @@ namespace :github_analysis do
       list_available_prs(owner, repo)
     rescue StandardError => e
       puts "❌ 無法列出 PR: #{e.message}"
+    end
+  end
+
+  desc "匯出 PR 測試範圍報告"
+  task :test_scope_report, %i[company_name pr_number export] => :environment do |_t, args|
+    company_name = args[:company_name] || "PrjJieZhou"
+    pr_number = args[:pr_number]
+    export = args[:export] || "markdown"
+
+    unless pr_number.present?
+      puts "❌ 請提供 PR number，例如: rails github_analysis:test_scope_report[PrjJieZhou,65]"
+      next
+    end
+
+    company = Company.find_by(name: company_name)
+    unless company
+      puts "❌ 找不到公司: #{company_name}"
+      next
+    end
+
+    result = GithubAnalysis::GenerateTestScopeReport.result(
+      company_id: company.id,
+      pr_number: pr_number,
+      format: "qa",
+    )
+
+    unless result.success?
+      puts "❌ #{result.error}"
+      next
+    end
+
+    if export == "json"
+      puts JSON.pretty_generate(result.report)
+    else
+      puts result.markdown
     end
   end
 

@@ -17,6 +17,11 @@ module CodeAnalysis
 
     def call
       self.action_page_info = {
+        source_file_path: action_file,
+        play_chain: PlayChainParserService.new.parse(content),
+        operation_type: OperationTypeInfererService.infer(action_class_name),
+        blueprint_names: BlueprintParserService.new.parse(content),
+        concern_names: ConcernParserService.new.parse(content),
         relate_actions: [],
         relate_models: {},
         select_column: [],
