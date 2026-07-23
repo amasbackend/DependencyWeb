@@ -49,10 +49,10 @@
           type="text"
           id="branch-input"
           name="branch"
-          placeholder="例如: main, master, develop"
-          value="master"
+          placeholder="例如: test/i18n, main, master"
+          value="test/i18n"
           class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        <p class="mt-1 text-xs text-gray-500">例如: main, master, develop</p>
+        <p class="mt-1 text-xs text-gray-500">預設: test/i18n（亦可填 main、master 等）</p>
       </div>
 
       <div class="flex items-center space-x-4">
@@ -125,7 +125,7 @@
 
       var owner = document.getElementById('owner-input').value.trim();
       var repo = document.getElementById('repo-input').value.trim();
-      var branch = document.getElementById('branch-input').value.trim() || 'main';
+      var branch = document.getElementById('branch-input').value.trim() || 'test/i18n';
       var btn = document.getElementById('import-btn');
       var text = document.getElementById('import-text');
       var messageEl = document.getElementById('message-indicator');

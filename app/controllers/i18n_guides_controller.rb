@@ -7,8 +7,9 @@ class I18nGuidesController < ApplicationController
   def show
     @recommended_branch = RECOMMENDED_BRANCH
     @skill_path = File.join(SKILL_DIR, "SKILL.md")
-    @companies = Company.order(:name)
-    @selected_company = Company.find_by(id: params[:company_id]) if params[:company_id].present?
+    @project_name = params[:project].to_s.strip
+    @repository = params[:repo].to_s.strip
+    @matched_company = find_matched_company
     @skill_markdown = read_skill_file("SKILL.md")
     @ai_prompt = build_ai_prompt
   end
@@ -22,10 +23,20 @@ class I18nGuidesController < ApplicationController
     File.read(path)
   end
 
+  def find_matched_company
+    return nil if @project_name.blank?
+
+    Company.find_by(name: @project_name)
+  end
+
   def build_ai_prompt
-    project_name = @selected_company&.name || "（請替換為母專案名稱）"
-    github = [@selected_company&.github_owner, @selected_company&.name].compact.join("/")
-    github_line = github.present? ? "Repository：`#{github}`" : "Repository：（匯入後的 GitHub owner/repo）"
+    project_name = @project_name.presence || "（請替換為母專案名稱）"
+    github_line =
+      if @repository.present?
+        "Repository：`#{@repository}`"
+      else
+        "Repository：（匯入後的 GitHub owner/repo）"
+      end
 
     <<~PROMPT
       請依下列 Cursor Skill，為母專案 **#{project_name}** 補齊 zh-TW I18n（model.yml / actor.yml / controller.yml）。

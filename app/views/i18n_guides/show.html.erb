@@ -27,33 +27,43 @@
       </button>
       <span id="branch-copy-status" class="text-xs text-amber-800"></span>
     </div>
-    <% if @companies.any? %>
-      <div class="mt-4 pt-3 border-t border-amber-200">
-        <p class="text-xs text-amber-900 mb-2">選擇專案以產生含 repo 名稱的 AI 提示詞，並前往同步母資料：</p>
-        <div class="flex flex-wrap gap-2">
-          <% @companies.each do |company| %>
-            <%= link_to company.name, i18n_guide_path(company_id: company.id),
-              class: "px-3 py-1.5 rounded-lg text-sm border #{@selected_company&.id == company.id ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white border-amber-300 text-blue-700 hover:bg-amber-100'}" %>
-          <% end %>
+    <div class="mt-4 pt-3 border-t border-amber-200">
+      <p class="text-xs text-amber-900 mb-2">填入專案／repo 以產生含名稱的 AI 提示詞：</p>
+      <%= form_with url: i18n_guide_path, method: :get, local: true, class: "space-y-2" do %>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <label class="flex-1">
+            <span class="block text-[11px] text-amber-800 mb-0.5">專案名稱</span>
+            <input type="text" name="project" value="<%= @project_name %>"
+              placeholder="例：PrjJieZhou"
+              class="w-full px-3 py-1.5 text-sm border border-amber-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+          </label>
+          <label class="flex-1">
+            <span class="block text-[11px] text-amber-800 mb-0.5">Repository（選填）</span>
+            <input type="text" name="repo" value="<%= @repository %>"
+              placeholder="例：AMASTek/PrjJieZhou"
+              class="w-full px-3 py-1.5 text-sm border border-amber-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+          </label>
+          <div class="flex items-end">
+            <button type="submit"
+              class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 whitespace-nowrap">
+              套用到提示詞
+            </button>
+          </div>
         </div>
-        <% if @selected_company %>
-          <p class="text-xs text-amber-800 mt-2">
-            目前選定：<strong><%= @selected_company.name %></strong>
-            <% if @selected_company.github_owner.present? %>
-              （<%= @selected_company.github_owner %>/<%= @selected_company.name %>）
-            <% end %>
-            · <%= link_to "前往同步", management_page_path(@selected_company, view: "qa"), class: "underline" %>
-          </p>
-        <% end %>
-      </div>
-    <% end %>
+      <% end %>
+      <% if @matched_company %>
+        <p class="text-xs text-amber-800 mt-2">
+          已找到同名專案 · <%= link_to "前往同步母資料", management_page_path(@matched_company, view: "qa"), class: "underline" %>
+        </p>
+      <% end %>
+    </div>
   </div>
 
   <!-- 快速複製 -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
     <div class="bg-white border border-indigo-200 rounded-xl p-4 shadow-sm">
       <h3 class="font-semibold text-gray-800 mb-1">AI 提示詞</h3>
-      <p class="text-xs text-gray-500 mb-3">含 Skill + <%= @recommended_branch %> 分支約定<%= @selected_company ? "（已帶入 #{@selected_company.name}）" : "" %>。</p>
+      <p class="text-xs text-gray-500 mb-3">含 Skill + <%= @recommended_branch %> 分支約定<%= @project_name.present? ? "（已帶入 #{@project_name}）" : "" %>。</p>
       <button type="button"
         class="w-full px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
         onclick="copyFrom('ai-prompt-text', 'ai-prompt-status')">
