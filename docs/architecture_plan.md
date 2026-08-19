@@ -2,6 +2,31 @@
 
 > Written per `project_plan.md` §2, before any Phase 1 implementation code. Covers the required 16 sections. This document is the authoritative schema/architecture reference for all later phases; update it (per §76) whenever a later phase reveals a design problem here.
 
+## Current status (checkpoint — 2026-08-19)
+
+**Done: Phases 1-9 of the §75 roadmap**, committed as `3da4a33` ("Initial build: Phases 1-9..."). `pull_request_analyses.status` currently advances `queued → fetching_pr → diffing` and stops there — everything from `graphifying` on is unbuilt. Full per-phase detail (design rationale, real bugs found and fixed, real-data validation) is inline below, in numbered-section order; this block is just a fast map to it.
+
+| Phase | What | Where to read more |
+|---|---|---|
+| 1 | Schema (12 tables), Actor/Blueprinter conventions, Solid Queue on its own SQLite DB | §4, §14 |
+| 2 | GitHub project import (`Projects::Create`/`Import`) | §2 (DependencyWeb comparison) |
+| 3 | Repo manager: bare/mirror clone, `git worktree`, `GitCommand` (GIT_ASKPASS auth) | §8 |
+| 4 | Graphify integration — confirmed as a real headless CLI, not just an AI-IDE skill | §9 |
+| 5 | Base code index via Graphify + Rails-directory classification | §3 (Base Code Index Population), §9 |
+| 6 | Business module/feature naming: route comments → CRUD rules → LLM (only for genuinely custom actions) | §11 (Phase 6 subsection) |
+| 7 | Project UI: home + show page, business/technical view toggle, search, sync/delete | §6, §13 |
+| 8 | PR import: metadata + merge-base via GitHub API only, no git access | §10 |
+| 9 | Git diff: merge-base-aware, `RubyDiffHunkScanner` for §28's structured per-method diff | §10 (Phase 9 implementation notes) |
+
+**Not yet built**: Phase 10 (Graphify PR impact — first phase that actually needs a real PR worktree), 11 (business feature impact mapping), 12 (LLM test-scope generation — the `Llm::Provider` abstraction exists from Phase 6, but no prompt/schema work yet), 13 (test report rendering), 14 (UI polish), 15 (automated-test hardening pass).
+
+**Standing facts worth knowing before touching this repo further**:
+- Primary DB is MySQL 5.7 (shared server, `192.168.26.123`, credentials in Rails encrypted credentials — see §4's deviation note); Solid Queue's own tables are on a **separate local SQLite DB** because that MySQL version lacks `SKIP LOCKED`.
+- `GITHUB_ACCESS_TOKEN` lives in `.env` (git-ignored, loaded by `dotenv-rails` in dev/test only), reused from `/home/micky/DependencyWeb`'s credentials with the user's go-ahead.
+- Real target repo for live validation throughout: `AMASTek/PrjJieZhou` — imported as `Project` id 6 in this environment (19 business modules, 93 features, 1219 code entities from real data), with at least one real `PullRequestAnalysis` (PR #113) fully diffed.
+- No LLM provider has a real API key configured yet — the LLM-inferred business-feature-naming path (Phase 6) and all of Phase 12 are only verified against stubbed responses so far. The user offered to stand in as the LLM for manual testing when that's next relevant.
+- Every phase was validated with a **live run against real GitHub data**, not just fixture-based automated tests — this caught several real bugs fixture tests alone missed (a Git-version-specific auth mechanism failure in Phase 3, a hunk-header misattribution edge case in Phase 9). Worth continuing this practice for Phase 10+.
+
 ## 1. PrjAGWms 可參考的架構模式
 
 This project follows `/home/micky/PrjAGWms`'s conventions rather than inventing a new architecture:
