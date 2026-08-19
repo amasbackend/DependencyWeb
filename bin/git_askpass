@@ -1,0 +1,9 @@
+#!/bin/sh
+# Invoked by git (via GIT_ASKPASS) whenever it needs a username or password
+# credential — e.g. `git_askpass "Username for 'https://github.com': "`.
+# The token is read from an environment variable (GIT_ASKPASS_TOKEN, set by
+# GitCommand.auth_env), never passed as a CLI argument here or anywhere else,
+# so it never appears in `ps aux` output. GitHub accepts the same PAT value
+# for both the username and password prompts over HTTPS, so this script
+# answers identically regardless of which prompt it was called for.
+echo "$GIT_ASKPASS_TOKEN"

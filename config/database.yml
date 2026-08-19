@@ -1,0 +1,47 @@
+default: &default
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+# Primary application data — MySQL, mirrors /home/micky/DependencyWeb's config.
+primary_default: &primary_default
+  <<: *default
+  adapter: mysql2
+  encoding: utf8mb4
+  socket: /var/run/mysqld/mysqld.sock
+  username: <%= Rails.application.credentials.dig(:database_username) %>
+  password: <%= Rails.application.credentials.dig(:database_password) %>
+  host: <%= Rails.application.credentials.dig(:database_host) %>
+
+# Solid Queue's own tables — local SQLite. The shared MySQL server above is 5.7,
+# which doesn't support SKIP LOCKED (needs MySQL 8+), so Solid Queue's dispatcher
+# cannot run against it. See docs/architecture_plan.md §14.
+queue_default: &queue_default
+  <<: *default
+  adapter: sqlite3
+  migrations_paths: db/queue_migrate
+
+development:
+  primary:
+    <<: *primary_default
+    database: dependency_web2_development
+  queue:
+    <<: *queue_default
+    database: storage/development_queue.sqlite3
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test:
+  primary:
+    <<: *primary_default
+    database: dependency_web2_test
+  queue:
+    <<: *queue_default
+    database: storage/test_queue.sqlite3
+
+production:
+  primary:
+    <<: *primary_default
+    database: dependency_web2_production
+  queue:
+    <<: *queue_default
+    database: storage/production_queue.sqlite3

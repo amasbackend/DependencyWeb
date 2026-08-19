@@ -1,0 +1,15 @@
+zh-TW:
+  home:
+    index:
+      title: "GitHub PR 測試範圍分析"
+  projects:
+    create:
+      success: "已開始匯入專案，請稍候"
+    sync:
+      success: "已開始同步母分支，請稍候"
+    destroy:
+      success: "已刪除專案"
+    pull_request_analyses:
+      create:
+        success: "已開始分析 PR，請稍候"
+        invalid_pr_number: "PR Number 格式錯誤，須為正整數"

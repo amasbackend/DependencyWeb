@@ -1,0 +1,113 @@
+zh-TW:
+  enumerize:
+    project:
+      status:
+        pending: "待處理"
+        importing: "匯入中"
+        ready: "就緒"
+        syncing: "同步中"
+        failed: "失敗"
+      analysis_status:
+        queued: "排隊中"
+        fetching_metadata: "讀取中繼資料"
+        cloning: "複製中"
+        installing_graphify: "安裝 Graphify"
+        scanning_code: "掃描程式碼"
+        mapping_business_modules: "對應業務模組"
+        mapping_business_features: "對應業務功能"
+        completed: "完成"
+        failed: "失敗"
+    business_module:
+      source:
+        locale_derived: "語系推導"
+        route_derived: "路由推導"
+        llm_inferred: "LLM 推論"
+        manual: "手動"
+    business_feature:
+      source:
+        locale_derived: "語系推導"
+        route_derived: "路由推導"
+        llm_inferred: "LLM 推論"
+        manual: "手動"
+    code_entity:
+      entity_type:
+        model: "模型"
+        controller: "控制器"
+        actor: "Actor"
+        service: "服務"
+        blueprint: "Blueprint"
+        job: "背景工作"
+        mailer: "郵件"
+        route: "路由"
+        view: "視圖"
+        javascript: "JavaScript"
+        concern: "Concern"
+        validator: "驗證器"
+        serializer: "序列化器"
+    feature_code_entity:
+      role:
+        route: "路由"
+        controller_action: "控制器動作"
+        actor: "Actor"
+        model: "模型"
+        view: "視圖"
+        other: "其他"
+      source:
+        rule_based: "規則推導"
+        llm_inferred: "LLM 推論"
+        manual: "手動"
+    pull_request_analysis:
+      status:
+        queued: "排隊中"
+        fetching_pr: "讀取 PR 中"
+        creating_workspace: "建立工作區中"
+        diffing: "比對差異中"
+        graphifying: "分析相依中"
+        mapping_features: "對應功能中"
+        llm_analyzing: "LLM 分析中"
+        building_report: "產生報告中"
+        completed: "完成"
+        failed: "失敗"
+        llm_failed: "LLM 失敗"
+    changed_file:
+      change_type:
+        added: "新增"
+        modified: "修改"
+        deleted: "刪除"
+        renamed: "重新命名"
+    changed_code_entity:
+      entity_type:
+        model: "模型"
+        controller: "控制器"
+        actor: "Actor"
+        service: "服務"
+        blueprint: "Blueprint"
+        job: "背景工作"
+        mailer: "郵件"
+        route: "路由"
+        view: "視圖"
+        javascript: "JavaScript"
+        concern: "Concern"
+        validator: "驗證器"
+        serializer: "序列化器"
+      change_kind:
+        added: "新增"
+        modified: "修改"
+        removed: "移除"
+    impact_item:
+      impact_level:
+        direct_change: "直接修改"
+        direct_dependency: "直接依賴"
+        indirect_dependency: "間接依賴"
+        regression_candidate: "回歸確認"
+    test_report:
+      status:
+        generating: "產生中"
+        completed: "完成"
+        failed: "失敗"
+    test_case:
+      case_type:
+        core_change: "核心修改"
+        direct_impact: "直接影響"
+        indirect_impact: "間接影響"
+        regression: "回歸測試"

@@ -1,0 +1,37 @@
+zh-TW:
+  activerecord:
+    models:
+      project: "專案"
+      business_module: "業務模組"
+      business_feature: "業務功能"
+      code_entity: "程式碼實體"
+      feature_code_entity: "功能程式碼對照"
+      pull_request_analysis: "PR 分析"
+      changed_file: "異動檔案"
+      changed_code_entity: "異動程式碼實體"
+      graphify_artifact: "Graphify 產出"
+      impact_item: "影響項目"
+      test_report: "測試報告"
+      test_case: "測試案例"
+    attributes:
+      project:
+        owner: "擁有者"
+        repository_name: "儲存庫名稱"
+        default_branch: "母分支"
+        status: "狀態"
+      pull_request_analysis:
+        pr_number: "PR 編號"
+        status: "狀態"
+    errors:
+      messages:
+        record_invalid: "驗證失敗：%{errors}"
+        restrict_dependent_destroy:
+          has_one: "無法刪除紀錄，因為存在相依的 %{record}"
+          has_many: "無法刪除紀錄，因為存在相依的 %{record}"
+  errors:
+    format: "%{attribute}%{message}"
+    messages:
+      blank: "不能空白"
+      taken: "已經被使用"
+      invalid: "格式不正確"
+      not_a_number: "不是數字"

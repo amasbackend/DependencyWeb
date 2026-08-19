@@ -1,0 +1,45 @@
+<h1><%= t(".title") %></h1>
+
+<section>
+  <h2>GitHub 專案匯入</h2>
+  <%= form_with url: projects_path, method: :post do |form| %>
+    <div>
+      <%= form.label "project[owner]", "Owner" %>
+      <%= text_field_tag "project[owner]", nil, placeholder: "AMASTek" %>
+    </div>
+    <div>
+      <%= form.label "project[repository_name]", "Repository" %>
+      <%= text_field_tag "project[repository_name]", nil, placeholder: "PrjJieZhou" %>
+    </div>
+    <%= form.submit "開始匯入" %>
+  <% end %>
+</section>
+
+<section>
+  <h2>已匯入專案</h2>
+  <% if @projects.empty? %>
+    <p>尚未匯入任何專案。</p>
+  <% else %>
+    <ul>
+      <% @projects.each do |project| %>
+        <li>
+          <strong><%= link_to project.github_full_name, project_path(project) %></strong>
+          — 母分支: <%= project.default_branch || "（尚未取得）" %>
+          — 狀態: <%= project.status_text %>
+          <% if project.status == "importing" %>
+            (<%= project.analysis_status_text %>)
+          <% end %>
+          — 最後同步:
+          <%= project.last_synced_at&.strftime("%Y-%m-%d %H:%M") || "尚未同步" %>
+          <% if project.status == "failed" && project.error_message.present? %>
+            — 錯誤: <%= project.error_message %>
+          <% end %>
+
+          <%= button_to "同步母分支", sync_project_path(project), method: :post %>
+          <%= button_to "刪除", project_path(project), method: :delete,
+                form: { data: { turbo_confirm: "確定要刪除「#{project.github_full_name}」嗎？此動作無法復原。" } } %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>

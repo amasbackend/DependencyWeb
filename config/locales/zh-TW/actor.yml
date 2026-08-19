@@ -1,0 +1,35 @@
+# Actor error-message keys, following PrjAGWms's fully-qualified
+# I18n.t("actor.<namespace>.<key>") convention. Grows as each Actor is introduced.
+zh-TW:
+  actor:
+    projects:
+      import:
+        repository_not_found: "GitHub Repository 找不到"
+        unauthorized: "GitHub Token 權限不足"
+      index_code:
+        failed: "程式碼掃描失敗：%{message}"
+      build_business_modules:
+        failed: "業務模組建立失敗：%{message}"
+      build_business_features:
+        failed: "業務功能建立失敗：%{message}"
+    repositories:
+      clone:
+        failed: "Repository 下載失敗：%{message}"
+      create_worktree:
+        already_exists: "工作區 %{name} 已存在"
+    graphify:
+      analyze:
+        not_installed: "Graphify 安裝失敗：找不到 graphify 指令"
+        failed: "Graphify 執行失敗：%{message}"
+      parse_result:
+        no_output: "Graphify 未產生任何可用結果"
+    pull_requests:
+      fetch:
+        not_found: "PR #%{pr_number} 不存在"
+        unauthorized: "GitHub Token 權限不足"
+        failed: "PR 資訊取得失敗：%{message}"
+    git:
+      diff:
+        failed: "Git Diff 失敗：%{message}"
+      parse_diff:
+        failed: "Diff 解析失敗：%{message}"
