@@ -1,0 +1,69 @@
+<section>
+  <h2>測試範圍</h2>
+  <% if @test_report.nil? %>
+    <p>尚未取得（可能仍在分析中，或此階段尚未支援）。</p>
+  <% else %>
+    <p>
+      <%= @test_report.title %>
+      （<%= @test_report.llm_provider %> / <%= @test_report.llm_model %>，Prompt <%= @test_report.prompt_version %>）
+    </p>
+    <% if @test_report.summary.present? %><p><%= simple_format(@test_report.summary) %></p><% end %>
+
+    <% if @test_report.markdown_content.present? %>
+      <p><%= link_to "下載完整測試範圍報告（Markdown）", report_project_pull_request_analysis_path(@project, @pull_request_analysis) %></p>
+      <details>
+        <summary>完整測試範圍報告（Markdown）</summary>
+        <pre><%= @test_report.markdown_content %></pre>
+      </details>
+    <% end %>
+
+    <% if @test_report.test_cases.any? %>
+      <% @test_report.test_cases.order(:position).group_by(&:case_type).each do |case_type, cases| %>
+        <h3><%= cases.first.case_type_text %></h3>
+        <% cases.each do |test_case| %>
+          <div>
+            <h4><%= test_case.name %></h4>
+            <p>
+              功能：<%= test_case.business_feature&.name || "（未對應）" %>
+              <% if test_case.page_path.present? %> · 頁面：<%= test_case.page_path %><% end %>
+            </p>
+            <p>驗證內容：<%= test_case.verification_purpose %></p>
+            <% if test_case.steps.present? %>
+              <p>操作步驟：</p>
+              <ol>
+                <% test_case.steps.each { |step| %><li><%= step %></li><% } %>
+              </ol>
+            <% end %>
+            <p>預期結果：<%= test_case.expected_result %></p>
+            <% if test_case.failure_criteria.present? %><p>失敗判讀：<%= test_case.failure_criteria %></p><% end %>
+            <% if test_case.notes.present? %><p>注意事項：<%= test_case.notes %></p><% end %>
+            <% if test_case.evidence.present? %>
+              <details>
+                <summary>分析依據</summary>
+                <pre><%= JSON.pretty_generate(test_case.evidence) %></pre>
+              </details>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <% structured = @test_report.structured_content || {} %>
+    <% if structured["pass_criteria"].present? %>
+      <h3>測試通過標準</h3>
+      <ul><% structured["pass_criteria"].each { |c| %><li><%= c %></li><% } %></ul>
+    <% end %>
+    <% if structured["manual_checks"].present? %>
+      <h3>建議人工額外檢查</h3>
+      <ul><% structured["manual_checks"].each { |c| %><li><%= c %></li><% } %></ul>
+    <% end %>
+    <% if structured["uncertain_items"].present? %>
+      <h3>需要人工確認</h3>
+      <ul>
+        <% structured["uncertain_items"].each do |item| %>
+          <li><%= item["description"] %> — <%= item["reason"] %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% end %>
+</section>

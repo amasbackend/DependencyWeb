@@ -1,0 +1,32 @@
+<section>
+  <h2>修改內容</h2>
+  <% if @pull_request_analysis.changed_files.empty? %>
+    <p>尚未取得（可能仍在分析中，或此階段尚未支援此 PR 的檔案類型）。</p>
+  <% else %>
+    <ul>
+      <% @pull_request_analysis.changed_files.each do |file| %>
+        <li>
+          <%= file.change_type_text %>: <%= file.previous_file_path.present? ? "#{file.previous_file_path} → #{file.file_path}" : file.file_path %>
+          (+<%= file.additions %> / -<%= file.deletions %>)
+        </li>
+      <% end %>
+    </ul>
+    <p>完整 Diff 內容請見「Raw Diff」分頁。</p>
+
+    <% if @pull_request_analysis.changed_code_entities.any? %>
+      <h3>異動技術實體</h3>
+      <ul>
+        <% @pull_request_analysis.changed_code_entities.each do |entity| %>
+          <li>
+            <%= entity.entity_type_text %>:
+            <%= [ entity.class_name, entity.method_name ].compact.join("#") %>
+            (<%= entity.change_kind_text %>)
+            <% if entity.validation_changed %> · 驗證變更 <% end %>
+            <% if entity.association_changed %> · 關聯變更 <% end %>
+            <% if entity.code_entity_id.blank? %> · 母分支無對應項目（新增） <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% end %>
+</section>

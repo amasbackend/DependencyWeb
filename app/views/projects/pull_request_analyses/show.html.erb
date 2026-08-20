@@ -3,23 +3,14 @@
 
 <section>
   <h2>狀態</h2>
-  <p>
-    <%= @pull_request_analysis.status_text %>
-  </p>
+  <p><%= @pull_request_analysis.status_text %></p>
   <% if @pull_request_analysis.status == "failed" && @pull_request_analysis.error_message.present? %>
     <p>錯誤（<%= @pull_request_analysis.error_stage %>）：<%= @pull_request_analysis.error_message %></p>
   <% end %>
-</section>
 
-<% if @pull_request_analysis.pr_title.present? %>
-  <section>
-    <h2>PR 資訊</h2>
+  <% if @pull_request_analysis.pr_title.present? %>
     <p>標題：<%= @pull_request_analysis.pr_title %></p>
-    <p>作者：<%= @pull_request_analysis.pr_author %></p>
-    <p>描述：<%= simple_format(@pull_request_analysis.pr_description.presence || "（無）") %></p>
-    <p>Base：<%= @pull_request_analysis.base_branch %> (<%= @pull_request_analysis.base_sha %>)</p>
-    <p>Head：<%= @pull_request_analysis.head_branch %> (<%= @pull_request_analysis.head_sha %>)</p>
-    <p>Merge Base：<%= @pull_request_analysis.merge_base_sha || "（尚未取得）" %></p>
+    <p>Base：<%= @pull_request_analysis.base_branch %>　Head：<%= @pull_request_analysis.head_branch %></p>
 
     <% if @pull_request_analysis.base_branch.present? && @pull_request_analysis.base_branch != @project.default_branch %>
       <p>
@@ -28,53 +19,29 @@
         分析將以此 PR 實際的 Base SHA 為準，不會視為相同分支。
       </p>
     <% end %>
-  </section>
-<% end %>
 
-<section>
-  <h2>測試範圍</h2>
-  <p>尚未支援，規劃於後續階段。</p>
-</section>
-
-<section>
-  <h2>修改內容</h2>
-  <% if @pull_request_analysis.changed_files.empty? %>
-    <p>尚未取得（可能仍在分析中，或此階段尚未支援此 PR 的檔案類型）。</p>
-  <% else %>
-    <ul>
-      <% @pull_request_analysis.changed_files.each do |file| %>
-        <li>
-          <%= file.change_type_text %>: <%= file.previous_file_path.present? ? "#{file.previous_file_path} → #{file.file_path}" : file.file_path %>
-          (+<%= file.additions %> / -<%= file.deletions %>)
-          <% if file.patch.present? %>
-            <details>
-              <summary>Raw Diff</summary>
-              <pre><%= file.patch %></pre>
-            </details>
-          <% end %>
-        </li>
-      <% end %>
-    </ul>
-
-    <% if @pull_request_analysis.changed_code_entities.any? %>
-      <h3>異動技術實體</h3>
-      <ul>
-        <% @pull_request_analysis.changed_code_entities.each do |entity| %>
-          <li>
-            <%= entity.entity_type_text %>:
-            <%= [ entity.class_name, entity.method_name ].compact.join("#") %>
-            (<%= entity.change_kind_text %>)
-            <% if entity.validation_changed %> · 驗證變更 <% end %>
-            <% if entity.association_changed %> · 關聯變更 <% end %>
-            <% if entity.code_entity_id.blank? %> · 母分支無對應項目（新增） <% end %>
-          </li>
-        <% end %>
-      </ul>
-    <% end %>
+    <details>
+      <summary>PR 詳細資訊</summary>
+      <p>作者：<%= @pull_request_analysis.pr_author %></p>
+      <p>描述：<%= simple_format(@pull_request_analysis.pr_description.presence || "（無）") %></p>
+      <p>Base SHA：<%= @pull_request_analysis.base_sha %></p>
+      <p>Head SHA：<%= @pull_request_analysis.head_sha %></p>
+      <p>Merge Base：<%= @pull_request_analysis.merge_base_sha || "（尚未取得）" %></p>
+    </details>
   <% end %>
+
+  <p>
+    修改檔案：<%= @pull_request_analysis.changed_files.count %>
+    受影響技術實體：<%= @pull_request_analysis.impact_items.where.not(code_entity_id: nil).distinct.count(:code_entity_id) %>
+    受影響業務功能：<%= @pull_request_analysis.impact_items.where.not(business_feature_id: nil).distinct.count(:business_feature_id) %>
+  </p>
 </section>
 
-<section>
-  <h2>Graphify</h2>
-  <p>尚未支援，規劃於後續階段。</p>
-</section>
+<nav>
+  <% Projects::PullRequestAnalysesController::TABS.each do |tab| %>
+    <%= link_to tab_label(tab), project_pull_request_analysis_path(@project, @pull_request_analysis, tab: tab),
+          class: (@tab == tab ? "active" : nil) %>
+  <% end %>
+</nav>
+
+<%= render "projects/pull_request_analyses/tabs/#{@tab}" %>

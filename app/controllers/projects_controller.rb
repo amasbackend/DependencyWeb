@@ -2,7 +2,10 @@ class ProjectsController < ApplicationController
   before_action :set_project, only: [ :show, :destroy, :sync ]
 
   def create
-    actor = Projects::Create.result(owner: project_params[:owner], repository_name: project_params[:repository_name])
+    actor = Projects::Create.result(
+      owner: project_params[:owner], repository_name: project_params[:repository_name],
+      default_branch: project_params[:default_branch].presence,
+    )
 
     if actor.success?
       redirect_to root_path, notice: t(".success")
@@ -47,7 +50,7 @@ class ProjectsController < ApplicationController
   end
 
   def project_params
-    params.require(:project).permit(:owner, :repository_name)
+    params.require(:project).permit(:owner, :repository_name, :default_branch)
   end
 
   # Best-effort — the DB record (the source of truth) is already gone by the

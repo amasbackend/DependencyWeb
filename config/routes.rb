@@ -10,7 +10,11 @@ Rails.application.routes.draw do
       post :sync
     end
 
-    resources :pull_request_analyses, only: [ :create, :show ], controller: "projects/pull_request_analyses"
+    resources :pull_request_analyses, only: [ :create, :show ], controller: "projects/pull_request_analyses" do
+      member do
+        get :report
+      end
+    end
   end
 
   # Defines the root path route ("/")

@@ -1,0 +1,20 @@
+<section>
+  <h2>Raw Diff</h2>
+  <% if @pull_request_analysis.changed_files.empty? %>
+    <p>尚未取得（可能仍在分析中）。</p>
+  <% else %>
+    <% @pull_request_analysis.changed_files.each do |file| %>
+      <details>
+        <summary>
+          <%= file.change_type_text %>: <%= file.previous_file_path.present? ? "#{file.previous_file_path} → #{file.file_path}" : file.file_path %>
+          (+<%= file.additions %> / -<%= file.deletions %>)
+        </summary>
+        <% if file.patch.present? %>
+          <pre><%= file.patch %></pre>
+        <% else %>
+          <p>（無 diff 內容）</p>
+        <% end %>
+      </details>
+    <% end %>
+  <% end %>
+</section>

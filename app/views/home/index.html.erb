@@ -11,6 +11,13 @@
       <%= form.label "project[repository_name]", "Repository" %>
       <%= text_field_tag "project[repository_name]", nil, placeholder: "PrjJieZhou" %>
     </div>
+    <details>
+      <summary>Advanced Option</summary>
+      <div>
+        <%= form.label "project[default_branch]", "母分支（留空則自動讀取 GitHub Default Branch）" %>
+        <%= text_field_tag "project[default_branch]", nil, placeholder: "main" %>
+      </div>
+    </details>
     <%= form.submit "開始匯入" %>
   <% end %>
 </section>

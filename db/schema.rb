@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_18_120012) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_19_000002) do
   create_table "business_features", charset: "utf8mb4", force: :cascade do |t|
     t.bigint "project_id", null: false
     t.bigint "business_module_id", null: false
@@ -64,7 +64,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_18_120012) do
     t.integer "change_type", null: false
     t.integer "additions", default: 0, null: false
     t.integer "deletions", default: 0, null: false
-    t.text "patch"
+    t.text "patch", size: :long
     t.boolean "binary", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -107,7 +107,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_18_120012) do
   create_table "graphify_artifacts", charset: "utf8mb4", force: :cascade do |t|
     t.bigint "pull_request_analysis_id", null: false
     t.string "format", null: false
-    t.text "raw_content"
+    t.text "raw_content", size: :long
     t.json "parsed_content"
     t.string "graphify_version"
     t.datetime "generated_at"
@@ -323,13 +323,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_18_120012) do
     t.bigint "pull_request_analysis_id", null: false
     t.string "title"
     t.text "summary"
-    t.text "markdown_content"
+    t.text "markdown_content", size: :long
     t.json "structured_content", null: false
     t.integer "status", default: 0, null: false
     t.text "error_message"
     t.string "generated_by"
     t.string "llm_provider"
-    t.string "model_name"
+    t.string "llm_model"
     t.string "prompt_version", null: false
     t.integer "input_tokens"
     t.integer "output_tokens"

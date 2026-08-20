@@ -1,0 +1,33 @@
+<section>
+  <h2>業務視圖</h2>
+  <p>風險等級依實際 Dependency／Diff 分析結果分類（§43），非 LLM 主觀判斷。</p>
+
+  <% items = @pull_request_analysis.impact_items.includes(:code_entity, business_feature: :business_module) %>
+  <% if items.empty? %>
+    <p>尚未取得（可能仍在分析中，或此階段尚未支援）。</p>
+  <% else %>
+    <% items.group_by(&:risk_level).sort_by { |level, _| ImpactItem::RISK_ORDER.index(level) }.each do |_level, risk_items| %>
+      <h3><%= risk_items.first.risk_label %></h3>
+      <ul>
+        <% risk_items.each do |item| %>
+          <li>
+            <% if item.business_feature %>
+              <%= item.business_feature.business_module.name %> → <%= item.business_feature.name %>
+            <% elsif item.code_entity %>
+              <%= [ item.code_entity.class_name, item.code_entity.method_name ].compact.join("#") %>（尚未對應業務功能）
+            <% else %>
+              （無法對應到已知技術實體，需要人工確認）
+            <% end %>
+            <% if item.needs_manual_review %> · 需要人工確認 <% end %>
+            <% if item.reason.present? %>
+              <details>
+                <summary>可能影響原因</summary>
+                <p><%= item.reason %></p>
+              </details>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% end %>
+</section>

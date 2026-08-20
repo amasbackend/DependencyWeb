@@ -25,4 +25,20 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil flash[:alert]
     assert_not Project.exists?(repository_name: "PrjJieZhou")
   end
+
+  test "§54 Advanced Option: an explicit default_branch param is passed through to the project" do
+    ProjectImportJob.stub :perform_later, ->(**) { true } do
+      post projects_path, params: { project: { owner: "AMASTek", repository_name: "PrjJieZhou", default_branch: "release3.1.3" } }
+    end
+
+    assert_equal "release3.1.3", Project.find_by(repository_name: "PrjJieZhou").default_branch
+  end
+
+  test "an empty default_branch param leaves it blank for auto-detection" do
+    ProjectImportJob.stub :perform_later, ->(**) { true } do
+      post projects_path, params: { project: { owner: "AMASTek", repository_name: "PrjJieZhou", default_branch: "" } }
+    end
+
+    assert_nil Project.find_by(repository_name: "PrjJieZhou").default_branch
+  end
 end

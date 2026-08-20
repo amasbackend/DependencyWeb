@@ -21,7 +21,11 @@ module DependencyWeb2
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
-    # config.time_zone = "Central Time (US & Canada)"
+    # Reports read as UTC+8 timestamps throughout (see spec_sample.md's own
+    # "2026-07-31 16:38:49（UTC+8）" convention) — matches the zh-TW operator
+    # audience this whole app targets. Storage stays UTC either way; this
+    # only affects display formatting (e.g. Reports::RenderMarkdown, Phase 13).
+    config.time_zone = "Asia/Taipei"
     # config.eager_load_paths << Rails.root.join("extras")
 
     config.i18n.default_locale = :"zh-TW"

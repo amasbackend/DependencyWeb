@@ -13,3 +13,5 @@ zh-TW:
       create:
         success: "已開始分析 PR，請稍候"
         invalid_pr_number: "PR Number 格式錯誤，須為正整數"
+      report:
+        not_ready: "測試範圍報告尚未產生，請稍候再試"

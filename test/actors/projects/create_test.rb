@@ -32,4 +32,25 @@ class Projects::CreateTest < ActiveSupport::TestCase
 
     assert_not result.success?
   end
+
+  test "§54 Advanced Option: an explicit default_branch is set on the project at creation" do
+    enqueued = false
+
+    result = ProjectImportJob.stub :perform_later, ->(**) { enqueued = true } do
+      Projects::Create.result(owner: "AMASTek", repository_name: "PrjJieZhou", default_branch: "release3.1.3")
+    end
+
+    assert result.success?
+    assert_equal "release3.1.3", result.project.default_branch
+    assert enqueued
+  end
+
+  test "omitting default_branch leaves it blank for Projects::Import to auto-detect" do
+    result = ProjectImportJob.stub :perform_later, ->(**) { true } do
+      Projects::Create.result(owner: "AMASTek", repository_name: "PrjJieZhou")
+    end
+
+    assert result.success?
+    assert_nil result.project.default_branch
+  end
 end

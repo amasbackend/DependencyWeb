@@ -1,0 +1,43 @@
+<section>
+  <h2>技術視圖</h2>
+
+  <h3>異動技術實體</h3>
+  <% if @pull_request_analysis.changed_code_entities.empty? %>
+    <p>尚未取得。</p>
+  <% else %>
+    <% @pull_request_analysis.changed_code_entities.group_by(&:entity_type).each do |entity_type, entities| %>
+      <h4><%= entities.first.entity_type_text %></h4>
+      <ul>
+        <% entities.each do |entity| %>
+          <li>
+            <%= [ entity.class_name, entity.method_name ].compact.join("#") %>
+            (<%= entity.change_kind_text %>)
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% end %>
+
+  <h3>Direct / Indirect Dependencies</h3>
+  <% items = @pull_request_analysis.impact_items.includes(:code_entity) %>
+  <% if items.empty? %>
+    <p>尚未取得。</p>
+  <% else %>
+    <% items.group_by(&:impact_level).each do |level, level_items| %>
+      <h4><%= level_items.first.impact_level_text %></h4>
+      <ul>
+        <% level_items.each do |item| %>
+          <li>
+            <% if item.code_entity %>
+              <%= item.code_entity.entity_type_text %>: <%= [ item.code_entity.class_name, item.code_entity.method_name ].compact.join("#") %>
+            <% else %>
+              （無法對應到已知技術實體）
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% end %>
+
+  <p>完整 Graphify 分析結果請見「Graphify」分頁。</p>
+</section>

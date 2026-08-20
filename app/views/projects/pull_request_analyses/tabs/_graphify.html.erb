@@ -1,0 +1,18 @@
+<section>
+  <h2>Graphify</h2>
+  <% if @pull_request_analysis.graphify_artifacts.empty? %>
+    <p>尚未取得（可能仍在分析中，或此階段尚未支援）。</p>
+  <% else %>
+    <ul>
+      <% @pull_request_analysis.graphify_artifacts.each do |artifact| %>
+        <li>
+          <%= artifact.format %>（<%= artifact.graphify_version %>，<%= artifact.generated_at %>）
+          <details>
+            <summary>Raw Content</summary>
+            <pre><%= artifact.raw_content %></pre>
+          </details>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</section>
