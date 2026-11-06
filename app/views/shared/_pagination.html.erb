@@ -1,0 +1,17 @@
+<% if total_pages > 1 %>
+  <nav class="flex items-center justify-between border-t border-slate-200 px-3 py-3 text-sm text-slate-600" aria-label="分頁">
+    <span>第 <%= page %> / <%= total_pages %> 頁</span>
+    <div class="flex gap-2">
+      <% if page > 1 %>
+        <%= link_to "上一頁", path.call(page - 1), class: "rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50" %>
+      <% else %>
+        <span class="rounded-md border border-slate-200 px-3 py-1 text-slate-400">上一頁</span>
+      <% end %>
+      <% if page < total_pages %>
+        <%= link_to "下一頁", path.call(page + 1), class: "rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50" %>
+      <% else %>
+        <span class="rounded-md border border-slate-200 px-3 py-1 text-slate-400">下一頁</span>
+      <% end %>
+    </div>
+  </nav>
+<% end %>

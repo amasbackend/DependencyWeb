@@ -7,14 +7,17 @@ module Llm
     MAX_TOKENS = 8192
     JSON_INSTRUCTION = "\n\nRespond with valid JSON only — no prose, no markdown code fences.".freeze
 
-    def generate(prompt:, system: nil, json: false)
-      response = connection.post do |req|
-        req.body = {
-          model: LlmConfig.model,
-          max_tokens: MAX_TOKENS,
-          messages: [ { role: "user", content: json ? "#{prompt}#{JSON_INSTRUCTION}" : prompt } ],
-        }
-        req.body[:system] = system if system.present?
+    def generate(prompt:, system: nil, json: false, temperature: nil)
+      response = with_retry do
+        connection.post do |req|
+          req.body = {
+            model: LlmConfig.model,
+            max_tokens: MAX_TOKENS,
+            messages: [ { role: "user", content: json ? "#{prompt}#{JSON_INSTRUCTION}" : prompt } ],
+          }
+          req.body[:system] = system if system.present?
+          req.body[:temperature] = temperature if temperature
+        end
       end
 
       raise Provider::Error, "Claude API error (#{response.status}): #{response.body}" unless response.success?
@@ -25,7 +28,10 @@ module Llm
 
       Llm::Response.new(
         content: text,
-        input_tokens: usage["input_tokens"],
+        # Claude reports cache reads/writes separately from input_tokens;
+        # summed here so input_tokens means "total input" on every provider.
+        input_tokens: usage["input_tokens"] && usage["input_tokens"] + usage["cache_read_input_tokens"].to_i + usage["cache_creation_input_tokens"].to_i,
+        cached_input_tokens: usage["cache_read_input_tokens"],
         output_tokens: usage["output_tokens"],
         provider: "claude",
         model: body["model"] || LlmConfig.model,

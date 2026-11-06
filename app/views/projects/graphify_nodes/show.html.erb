@@ -1,0 +1,45 @@
+<turbo-frame id="graph-inspector">
+  <% if @node.blank? %>
+    <p class="text-sm text-slate-500">找不到此節點。</p>
+  <% else %>
+    <p class="break-all font-mono text-sm font-medium text-slate-900"><%= @node["label"] %></p>
+
+    <dl class="mt-3 space-y-2 text-sm">
+      <div>
+        <dt class="text-xs uppercase text-slate-500">Type</dt>
+        <dd class="text-slate-700"><%= code_entity_type_label(@entity_type) %></dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">File</dt>
+        <dd class="break-all font-mono text-xs text-slate-700"><%= @node["source_file"] %></dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">Business Feature</dt>
+        <dd class="text-slate-700">
+          <% if @business_features.any? %>
+            <%= @business_features.map(&:name).join("、") %>
+          <% else %>
+            <span class="text-slate-500">尚未對應</span>
+          <% end %>
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">Community</dt>
+        <dd class="text-slate-700"><%= @community_name.presence || "其他" %></dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">Direct Inbound</dt>
+        <dd class="text-slate-700"><%= @direct_inbound %></dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">Indirect Inbound（總計）</dt>
+        <dd class="text-slate-700"><%= @total_inbound %></dd>
+      </div>
+    </dl>
+
+    <% if @code_entity %>
+      <%= link_to "查看程式資訊", project_path(@project, q: @class_name, view: "technical"),
+            class: "mt-4 inline-block rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100" %>
+    <% end %>
+  <% end %>
+</turbo-frame>

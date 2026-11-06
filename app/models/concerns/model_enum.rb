@@ -88,4 +88,21 @@ class ModelEnum
   def self.test_case_type_enum
     { core_change: 0, direct_impact: 1, indirect_impact: 2, regression: 3 }
   end
+
+  # Evidence tier behind one OperatorPathSegment's label — mirrors the
+  # priority order project_plan.md asks for, adapted to what this app can
+  # actually derive today (see OperatorPathResolver): a route-line comment is
+  # the strongest signal, a bare controller/action identity the weakest.
+  # i18n_derived/view_text_derived are reserved for scanners not built yet —
+  # keeping them in the enum now avoids a second migration when they land.
+  def self.operator_path_source_enum
+    {
+      route_comment_derived: 0,
+      i18n_derived: 1,
+      view_text_derived: 2,
+      crud_convention_derived: 3,
+      controller_action_only: 4,
+      manual: 5,
+    }
+  end
 end

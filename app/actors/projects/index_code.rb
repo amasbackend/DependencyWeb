@@ -24,10 +24,7 @@ module Projects
         worktree_path: worktree_path,
       )
 
-      Project.transaction do
-        project.code_entities.delete_all
-        CodeEntity.insert_all!(entities.map { |e| e.merge(project_id: project.id) }, record_timestamps: true) if entities.any?
-      end
+      Project.transaction { replace_code_entities(entities) }
 
       self.code_entities_count = entities.size
       project.update!(analysis_status: "mapping_business_modules")
@@ -38,6 +35,27 @@ module Projects
     end
 
     private
+
+    # Re-sync keeps each entity's row (matched by its file:class:method
+    # signature) instead of delete-all-and-reinsert: past PR analyses
+    # (changed entities, impact items) and feature links point at these rows,
+    # and a bulk delete under them failed outright on the foreign keys —
+    # 同步 on any already-analyzed project died at 掃描程式碼. Only entities
+    # that no longer exist are removed, after their references are released.
+    def replace_code_entities(entities)
+      existing = project.code_entities.pluck(:signature_hash, :id).to_h
+      rows = entities.map { |e| e.merge(project_id: project.id) }
+      CodeEntity.upsert_all(rows, record_timestamps: true) if rows.any?
+
+      stale_ids = existing.except(*rows.map { |r| r[:signature_hash] }).values
+      return if stale_ids.empty?
+
+      ChangedCodeEntity.where(code_entity_id: stale_ids).update_all(code_entity_id: nil)
+      ImpactItem.where(code_entity_id: stale_ids).update_all(code_entity_id: nil)
+      OperatorPathSegment.where(code_entity_id: stale_ids).update_all(code_entity_id: nil)
+      FeatureCodeEntity.where(code_entity_id: stale_ids).delete_all
+      CodeEntity.where(id: stale_ids).delete_all
+    end
 
     def fail_with(message)
       project.update!(status: "failed", error_message: message)

@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* Tailwind v4's zero-config content detection recursively scans (and, under
+   `tailwindcss:watch`, sets an inotify watch on) every file under the
+   working directory unless told otherwise — including tmp/cache/bootsnap/,
+   which alone runs to ~2,700 files across ~270 subdirectories in this repo.
+   That's what was exhausting this sandbox's inotify watch budget and
+   crashing the Bun-based watcher (confirmed by reproducing the crash with
+   the tailwindcss binary run directly, outside Rails/foreman — see
+   docs/commands.md). None of these directories ever contain Tailwind
+   classes, so excluding them from scanning is correct, not just a
+   workaround for this one environment. */
+@source not "../../../tmp";
+@source not "../../../log";
+@source not "../../../storage";
+@source not "../../../vendor";
+@source not "../../../.git";
+
+@theme {
+  /* Risk badges — aligned with ImpactItem::RISK_LABEL (高風險/中風險/低風險) */
+  --color-risk-high: var(--color-red-600);
+  --color-risk-medium: var(--color-amber-500);
+  --color-risk-low: var(--color-slate-500);
+
+  /* Project#status / PullRequestAnalysis#status badges */
+  --color-status-ready: var(--color-emerald-600);
+  --color-status-pending: var(--color-slate-400);
+  --color-status-failed: var(--color-red-600);
+}
+
+/* A visible focus indicator on every interactive element reached by
+   keyboard — most buttons/links here rely on the browser's own default
+   outline (never suppressed, see the audit in docs/frontend_redesign_plan.md
+   Phase 11), but this makes it consistent and unmissable regardless of
+   browser/OS defaults, without showing an outline on mouse/touch activation
+   (that's what :focus-visible is for, as opposed to plain :focus). */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-blue-600);
+    outline-offset: 2px;
+  }
+}
+
+/* Respect the OS-level "reduce motion" preference for CSS transitions (row
+   hover, disclosure chevrons, tab underline). */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,52 @@
+<% has_expand = view == "technical" %>
+<tbody<%= ' data-controller="disclosure"'.html_safe if has_expand %> class="divide-y divide-slate-100">
+  <tr class="group hover:bg-slate-50">
+    <td class="w-8 px-6 py-3">
+      <% if has_expand %>
+        <button type="button" data-action="disclosure#toggle" aria-expanded="false"
+                aria-label="展開技術實體"
+                class="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
+          <svg data-disclosure-target="icon" class="h-4 w-4 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      <% end %>
+    </td>
+    <td class="px-3 py-3 text-slate-600"><%= feature.business_module.name %></td>
+    <td class="px-3 py-3 font-medium text-slate-900"><%= feature.name %></td>
+    <td class="px-3 py-3 text-sm"><%= render "shared/operator_path", business_feature: feature %></td>
+    <td class="px-3 py-3"><%= source_badge(feature.source, feature.source_text) %></td>
+    <% if view == "technical" %>
+      <td class="px-3 py-3 text-slate-600"><%= feature.code_entities.size %></td>
+    <% end %>
+  </tr>
+  <% if has_expand %>
+    <tr data-disclosure-target="content" class="hidden bg-slate-50">
+      <td></td>
+      <td colspan="5">
+        <% if feature.code_entities.empty? %>
+          <p class="px-3 py-4 text-sm text-slate-500">尚未對應任何技術實體。</p>
+        <% else %>
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase text-slate-500">
+              <tr>
+                <th class="px-3 py-2">類型</th>
+                <th class="px-3 py-2">名稱</th>
+                <th class="px-3 py-2">檔案</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <% feature.code_entities.each do |code_entity| %>
+                <tr>
+                  <td class="px-3 py-2"><%= entity_type_badge(code_entity.entity_type_text) %></td>
+                  <td class="px-3 py-2 font-mono text-slate-700"><%= code_entity.name %></td>
+                  <td class="px-3 py-2 font-mono text-slate-500"><%= code_entity.file_path %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+      </td>
+    </tr>
+  <% end %>
+</tbody>

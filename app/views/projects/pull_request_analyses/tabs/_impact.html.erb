@@ -1,0 +1,99 @@
+<% screen_map = Array(@test_report&.structured_content&.dig("screen_map"))
+   changed_entities = @pull_request_analysis.changed_code_entities.order(:id).to_a
+   level_options = ImpactItem.impact_level.options %>
+
+<nav class="mb-6 flex flex-wrap gap-2 text-sm">
+  <a href="#screen-map" class="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-100">異動與畫面對照</a>
+  <a href="#impact-items" class="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-100">依異動分組的影響範圍</a>
+  <a href="#graphify" class="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-100">Graphify 依賴圖</a>
+</nav>
+
+<section id="screen-map" class="mb-8 scroll-mt-4">
+  <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+    <h2 class="text-lg font-semibold text-slate-900">異動與畫面對照</h2>
+    <p class="text-xs text-slate-500">系統依程式呼叫關係自動判斷，非 LLM 推測</p>
+  </div>
+  <% if screen_map.empty? %>
+    <p class="rounded-xl border border-slate-200 bg-white px-6 py-8 text-sm text-slate-500">尚未產生（需先完成測試範圍分析）。</p>
+  <% else %>
+    <% categories = screen_map.group_by { |row| row["screens"].present? && row["category"].blank? ? "對應到畫面" : row["category"].presence || "無法自動對應畫面" } %>
+    <div class="mb-3 flex flex-wrap gap-2 text-xs">
+      <% categories.each do |category, rows| %>
+        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700"><%= category %> <%= rows.size %></span>
+      <% end %>
+    </div>
+    <details class="rounded-xl border border-slate-200 bg-white" open>
+      <summary class="cursor-pointer px-5 py-3 text-sm text-slate-600 hover:bg-slate-50">共 <%= screen_map.size %> 項異動</summary>
+      <div class="max-h-[70vh] overflow-auto border-t border-slate-200">
+        <table class="w-full text-left text-sm">
+          <thead class="sticky top-0 border-b border-slate-200 bg-white text-xs uppercase text-slate-500">
+            <tr>
+              <th class="px-5 py-2">代號</th>
+              <th class="px-3 py-2">異動項目</th>
+              <th class="px-3 py-2">對應畫面／類別</th>
+              <th class="px-3 py-2">判斷依據</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% screen_map.each do |row| %>
+              <tr class="align-top hover:bg-slate-50">
+                <td class="whitespace-nowrap px-5 py-2 font-mono text-xs text-slate-500"><%= row["ref"] %></td>
+                <td class="px-3 py-2 font-mono text-xs text-slate-700"><%= row["subject"] %></td>
+                <td class="px-3 py-2 text-slate-700">
+                  <% if Array(row["screens"]).any? %>
+                    <% row["screens"].first(4).each do |screen| %><div><%= screen %></div><% end %>
+                    <% if row["screens"].size > 4 %><div class="text-xs text-slate-500">…等 <%= row["screens"].size %> 個畫面</div><% end %>
+                    <% if row["category"].present? %><div class="text-xs text-slate-500"><%= row["category"] %></div><% end %>
+                  <% else %>
+                    <span class="text-slate-500"><%= row["category"] %></span>
+                  <% end %>
+                </td>
+                <td class="px-3 py-2 font-mono text-xs text-slate-500"><%= Array(row["trace"]).first %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  <% end %>
+</section>
+
+<section id="impact-items" class="mb-8 scroll-mt-4">
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-semibold text-slate-900">依異動分組的影響範圍</h2>
+      <p class="mt-1 text-xs text-slate-500">每個異動的類別／方法，以及 Graphify 追溯到依賴它的程式與業務功能；風險等級依依賴關係分類，非 LLM 判斷。</p>
+    </div>
+    <%= form_with url: project_pull_request_analysis_path(@project, @pull_request_analysis, anchor: "impact-items"), method: :get, class: "flex items-center gap-2 text-sm" do %>
+      <%= hidden_field_tag :tab, "impact" %>
+      <%= select_tag :impact_level,
+            options_for_select([ [ "全部", "" ], *level_options.map { |label, value| [ "#{label}（#{@impact_level_counts[value].to_i}）", value ] } ], @impact_level_filter),
+            class: "rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      <%= submit_tag "套用", class: "rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100" %>
+    <% end %>
+  </div>
+
+  <% shown = changed_entities.select { |e| @impact_items_by_source.key?(e.id) } %>
+  <% orphan_items = @impact_items_by_source[nil] || [] %>
+  <% if shown.empty? && orphan_items.empty? %>
+    <p class="rounded-xl border border-slate-200 bg-white px-6 py-8 text-sm text-slate-500">尚未取得。</p>
+  <% else %>
+    <div class="space-y-2">
+      <% shown.group_by(&:entity_type_text).each do |type_text, entities| %>
+        <h3 class="pt-2 text-xs font-semibold uppercase text-slate-500"><%= type_text %>（<%= entities.size %>）</h3>
+        <% entities.each do |entity| %>
+          <% items = @impact_items_by_source.fetch(entity.id).sort_by { |i| ImpactItem::RISK_ORDER.index(i.risk_level) || ImpactItem::RISK_ORDER.size }
+             dependents = items.reject { |i| i.impact_level == "direct_change" } %>
+          <%= render "projects/pull_request_analyses/tabs/impact_group",
+                title: changed_entity_label(entity), entity: entity, items: items, dependents: dependents %>
+        <% end %>
+      <% end %>
+      <% if orphan_items.any? %>
+        <%= render "projects/pull_request_analyses/tabs/impact_group",
+              title: "其他（未對應到異動項目）", entity: nil, items: orphan_items, dependents: orphan_items %>
+      <% end %>
+    </div>
+  <% end %>
+</section>
+
+<%= render "projects/pull_request_analyses/tabs/graphify_graph" %>

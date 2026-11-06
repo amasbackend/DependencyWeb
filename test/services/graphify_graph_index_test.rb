@@ -11,7 +11,7 @@ class GraphifyGraphIndexTest < ActiveSupport::TestCase
         { "id" => "model_order", "label" => "Order", "source_file" => "app/models/order.rb", "_callable_class" => true },
         { "id" => "model_order_ship", "label" => ".ship!()", "source_file" => "app/models/order.rb" },
         { "id" => "actor_ship", "label" => "Orders::Ship", "source_file" => "app/actors/orders/ship.rb", "_callable_class" => true },
-        { "id" => "actor_ship_call", "label" => ".call()", "source_file" => "app/actors/orders/ship.rb" },
+        { "id" => "actor_ship_call", "label" => ".call()", "source_file" => "app/actors/orders/ship.rb", "community" => 3, "community_name" => "Orders::Ship" },
         { "id" => "controller_orders", "label" => "OrdersController", "source_file" => "app/controllers/orders_controller.rb", "_callable_class" => true },
         { "id" => "controller_orders_ship", "label" => ".ship()", "source_file" => "app/controllers/orders_controller.rb" },
         { "id" => "controller_orders_cancel", "label" => ".cancel()", "source_file" => "app/controllers/orders_controller.rb" },
@@ -48,6 +48,15 @@ class GraphifyGraphIndexTest < ActiveSupport::TestCase
     assert_equal "model", index.entity_type_for("model_order_ship")
     assert_equal "actor", index.entity_type_for("actor_ship_call")
     assert_equal "controller", index.entity_type_for("controller_orders_ship")
+  end
+
+  test "community_for/community_name_for read Graphify's already-computed Louvain cluster fields" do
+    index = GraphifyGraphIndex.new(sample_graph)
+
+    assert_equal 3, index.community_for("actor_ship_call")
+    assert_equal "Orders::Ship", index.community_name_for("actor_ship_call")
+    assert_nil index.community_for("model_order")
+    assert_nil index.community_name_for("model_order")
   end
 
   test "reverse_bfs walks the caller chain with correct hop depth and real edge evidence" do
@@ -92,5 +101,12 @@ class GraphifyGraphIndexTest < ActiveSupport::TestCase
     # hit for *every* changed method, since it targets the exact same node.
     assert_not result.key?("model_order")
     assert_empty index.callers_of_class("Order").select { |e| e["relation"] == "method" }
+  end
+
+  test "structural_parent_ids returns the class that defines a method, de-duplicated" do
+    index = GraphifyGraphIndex.new(sample_graph)
+
+    assert_equal [ "model_order" ], index.structural_parent_ids(%w[model_order_ship model_order_status])
+    assert_empty index.structural_parent_ids(%w[model_order])
   end
 end

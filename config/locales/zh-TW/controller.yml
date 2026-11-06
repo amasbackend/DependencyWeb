@@ -5,6 +5,7 @@ zh-TW:
   projects:
     create:
       success: "已開始匯入專案，請稍候"
+      already_imported: "「%{name}」已經匯入過，不會重新匯入；如需讀取母分支的最新內容，請在列表按「同步」"
     sync:
       success: "已開始同步母分支，請稍候"
     destroy:
@@ -15,3 +16,5 @@ zh-TW:
         invalid_pr_number: "PR Number 格式錯誤，須為正整數"
       report:
         not_ready: "測試範圍報告尚未產生，請稍候再試"
+      graph:
+        render_failed: "Graphify 圖形產生失敗：%{message}"

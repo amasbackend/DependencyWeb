@@ -25,6 +25,7 @@ class Projects::CreateTest < ActiveSupport::TestCase
 
     assert result.success?
     assert_equal existing.id, result.project.id
+    assert result.already_imported
   end
 
   test "fails with a validation error for an invalid owner" do

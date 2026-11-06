@@ -7,6 +7,7 @@ class BusinessFeature < ApplicationRecord
   has_many :code_entities, through: :feature_code_entities
   has_many :impact_items, dependent: :nullify
   has_many :test_cases, dependent: :nullify
+  has_one :operator_path, dependent: :destroy
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: { scope: :business_module_id }

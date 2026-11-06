@@ -1,5 +1,5 @@
 class HomeController < ApplicationController
   def index
-    @projects = Project.order(created_at: :desc)
+    @projects = Project.includes(:business_modules, :business_features).order(created_at: :desc)
   end
 end

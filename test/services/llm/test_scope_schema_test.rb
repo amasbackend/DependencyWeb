@@ -78,4 +78,29 @@ class Llm::TestScopeSchemaTest < ActiveSupport::TestCase
     errors = Llm::TestScopeSchema.validate(valid_payload("preparation" => "not an array"))
     assert_includes errors, "preparation must be an array"
   end
+
+  def chunk_case(overrides = {})
+    {
+      "name" => "數量為 0 可送出", "screen_key" => "orders#new", "case_type" => "core_change",
+      "impact_item_refs" => [ "CHG-1" ], "verification_purpose" => "x", "steps" => [ "點選「送出」" ], "expected_result" => "成功",
+    }.merge(overrides)
+  end
+
+  def validate_chunk(test_case)
+    Llm::TestScopeSchema.validate_chunk({ "test_cases" => [ test_case ], "uncertain_items" => [] }, screen_keys: [ "orders#new" ], refs: [ "CHG-1", "FILE-1" ])
+  end
+
+  test "a batch answer on the batch's own screen citing its own refs is valid, regression included" do
+    assert_empty validate_chunk(chunk_case)
+    assert_empty validate_chunk(chunk_case("case_type" => "regression"))
+  end
+
+  test "rejects a batch case placed on a screen outside the batch" do
+    assert_includes validate_chunk(chunk_case("screen_key" => "made/up#page")),
+      "test_cases[0].screen_key \"made/up#page\" is not one of this batch's screens"
+  end
+
+  test "rejects a batch case citing a ref the batch doesn't own" do
+    assert_includes validate_chunk(chunk_case("impact_item_refs" => [ "CHG-9" ])), "test_cases[0].impact_item_refs cites unknown refs CHG-9"
+  end
 end

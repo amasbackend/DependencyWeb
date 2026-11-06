@@ -1,0 +1,62 @@
+{
+  "$comment": "Documents one batch's input as Llm::TestScopeInputBuilder builds it (app/services/llm/test_scope_input_builder.rb) — a PR is sent as several of these, one per group of screens, plus an 'other' batch for changes that reach no single screen. The Ruby builder is authoritative; this file exists so the evidence contract each LLM call receives is reviewable independently of a Ruby diff.",
+  "type": "object",
+  "required": ["pull_request", "screens", "changes", "diffs", "glossary"],
+  "properties": {
+    "pull_request": {
+      "type": "object",
+      "properties": {
+        "number": { "type": "integer" },
+        "title": { "type": ["string", "null"] },
+        "description": { "type": "string" }
+      }
+    },
+    "screens": {
+      "type": "array",
+      "description": "From ScreenCatalog. labels are the Chinese texts found in the screen's view, partials and mounted Vue components — the only button/field names the model may use. The 'other' batch lists every screen without labels.",
+      "items": {
+        "type": "object",
+        "required": ["screen_key", "name", "url"],
+        "properties": {
+          "screen_key": { "type": "string", "examples": ["pms/work_orders#new"] },
+          "name": { "type": "string", "examples": ["工單管理 › 新增工單"] },
+          "url": { "type": "string" },
+          "labels": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "description": "From ScreenImpactLocator. Every change has a ref the model must cite in a case or explain in uncertain_items.",
+      "items": {
+        "type": "object",
+        "required": ["ref", "subject"],
+        "properties": {
+          "ref": { "type": "string", "pattern": "^(CHG|FILE)-\\d+$" },
+          "subject": { "type": "string" },
+          "kind": { "type": "string" },
+          "change": { "type": ["string", "null"] },
+          "validation_changed": { "type": "boolean" },
+          "association_changed": { "type": "boolean" },
+          "file": { "type": ["string", "null"] },
+          "screens": { "type": "array", "items": { "type": "string" } },
+          "trace": { "type": "array", "items": { "type": "string" } },
+          "category": { "type": "string", "description": "Only in the 'other' batch: why the change reaches no single screen." }
+        }
+      }
+    },
+    "diffs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "refs": { "type": "array", "items": { "type": "string" } },
+          "file": { "type": "string" },
+          "diff": { "type": "string" }
+        }
+      }
+    },
+    "glossary": { "type": "object", "description": "model key => { name, attributes } from the target app's zh-TW activerecord locale" },
+    "note": { "type": "string" }
+  }
+}

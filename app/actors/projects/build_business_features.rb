@@ -16,12 +16,15 @@ module Projects
     output :business_features_count
 
     def call
+      # In place by (module, slug), like Projects::BuildBusinessModules — only
+      # features no longer backed by a route are removed.
       Project.transaction do
-        BusinessFeature.where(business_module: project.business_modules).destroy_all
-        parsed_routes.group_by(&:controller).each { |controller, routes| build_for_controller(controller, routes) }
+        kept = parsed_routes.group_by(&:controller).flat_map { |controller, routes| build_for_controller(controller, routes) }
+        BusinessFeature.where(business_module: project.business_modules).where.not(id: kept.compact.map(&:id)).destroy_all
       end
 
       self.business_features_count = project.business_features.count
+      resolve_operator_paths
       project.update!(
         status: "ready", analysis_status: "completed",
         last_synced_at: Time.current, last_synced_sha: project.base_sha,
@@ -34,24 +37,30 @@ module Projects
 
     def build_for_controller(controller, routes)
       business_module = project.business_modules.find_by(slug: controller.parameterize)
-      return unless business_module
+      return [] unless business_module
 
-      routes.each { |route| build_feature(business_module, route) }
+      routes.map { |route| build_feature(business_module, route) }
     end
 
     def build_feature(business_module, route)
       naming = BusinessFeatureNamer.call(route: route, resource_label: business_module.name)
-      naming = infer_via_llm(route, business_module.name) if naming.needs_llm
+      naming = previous_llm_name(business_module, route) || infer_via_llm(route, business_module.name) if naming.needs_llm
       return unless naming
 
-      feature = business_module.business_features.find_or_create_by!(slug: naming.slug) do |f|
-        f.project = project
-        f.name = naming.name
-        f.domain_action = route.action
-        f.source = naming.source
-      end
+      feature = business_module.business_features.find_or_initialize_by(slug: naming.slug)
+      feature.update!(project: project, name: naming.name, domain_action: route.action, source: naming.source)
 
       link_code_entity(feature, route, naming.source)
+      feature
+    end
+
+    # A name the LLM already gave this action on an earlier sync — reused so
+    # re-syncing doesn't pay for (or reword) the same names again.
+    def previous_llm_name(business_module, route)
+      existing = business_module.business_features.find_by(slug: route.action)
+      return unless existing && existing.source.to_s == "llm_inferred"
+
+      BusinessFeatureNamer::Result.new(slug: route.action, name: existing.name, source: "llm_inferred", needs_llm: false)
     end
 
     def link_code_entity(feature, route, source)
@@ -63,6 +72,16 @@ module Projects
       FeatureCodeEntity.find_or_create_by!(business_feature: feature, code_entity: code_entity) do |fce|
         fce.role = "controller_action"
         fce.source = FEATURE_CODE_ENTITY_SOURCE.fetch(source, "manual")
+      end
+    end
+
+    # Runs once per build/re-sync (not per request — see OperatorPathResolver)
+    # so Operator Path is already computed and cached by the time any page
+    # renders it. Preloads what the resolver reads per-feature so this stays
+    # O(1) queries regardless of feature count, not O(n).
+    def resolve_operator_paths
+      project.business_features.includes(:business_module, feature_code_entities: :code_entity).find_each do |feature|
+        OperatorPathResolver.call(feature: feature)
       end
     end
 

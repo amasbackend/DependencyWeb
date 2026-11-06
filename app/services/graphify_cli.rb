@@ -24,6 +24,20 @@ class GraphifyCli
     raise NotInstalled, "graphify command not found on PATH"
   end
 
+  # The Python interpreter Graphify itself runs under (read from the
+  # `graphify` launcher's shebang — `uv tool install` gives it a private
+  # venv), so scripts can import Graphify's own modules, e.g. its graph.html
+  # exporter, without a second install.
+  def self.python
+    launcher = ENV.fetch("PATH", "").split(File::PATH_SEPARATOR)
+                  .map { |dir| File.join(dir, BINARY) }
+                  .find { |path| File.file?(path) && File.executable?(path) }
+    raise NotInstalled, "graphify command not found on PATH" unless launcher
+
+    shebang = File.open(launcher, &:readline).delete_prefix("#!").split
+    shebang.first.end_with?("/env") ? shebang.second : shebang.first
+  end
+
   def self.version
     run("--version", chdir: Dir.pwd).strip.delete_prefix("#{BINARY} ")
   rescue Error

@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Runs `tailwindcss --watch` with --cwd narrowed to app/, instead of
+# tailwindcss-rails' own `tailwindcss:watch` rake task, which has no way to
+# pass --cwd through and always watches the full Rails root.
+#
+# Root cause (reproduced directly, outside Rails/foreman — see
+# docs/commands.md): Tailwind's watch mode recursively sets an inotify watch
+# on every directory under --cwd. Rails.root includes tmp/, log/, storage/,
+# vendor/, .git/ — tmp/cache/bootsnap/ alone runs to ~2,700 files across
+# ~270 subdirectories in this repo — none of which can ever contain a
+# Tailwind class. Watching all of it exhausts this sandbox's inotify watch
+# budget and crashes the Bun-based watcher. app/ is exactly the directory
+# that can ever contain one, and scoping the watch to it is correct on its
+# own merits, not just a workaround for this one environment.
+require "bundler/setup"
+require "tailwindcss/ruby"
+
+app_dir = File.expand_path("../app", __dir__)
+exe = Tailwindcss::Ruby.executable
+
+# "-w" alone (no "always") stops watching once stdin closes — fine in an
+# interactive shell, but foreman doesn't keep a live stdin attached to child
+# processes, so plain "-w" exits (cleanly, code 0) almost immediately under
+# bin/dev, which foreman then reads as "this process is done" and tears down
+# every other process too, including an otherwise-healthy web server. "-w
+# always" is exactly what tailwindcss-rails' own watch_command(always: true)
+# variant exists for — this hits the same documented case.
+exec(exe, "-i", "assets/tailwind/application.css", "-o", "assets/builds/tailwind.css", "--cwd", app_dir, "-w", "always")

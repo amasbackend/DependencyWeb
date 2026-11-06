@@ -1,101 +1,123 @@
-<h1><%= @project.github_full_name %></h1>
+<h1 class="mb-6 text-2xl font-bold text-slate-900"><%= @project.github_full_name %></h1>
 
-<section>
-  <h2>專案資訊</h2>
-  <p>Owner: <%= @project.owner %></p>
-  <p>母分支: <%= @project.default_branch || "（尚未取得）" %></p>
-  <p>Base SHA: <%= @project.base_sha.presence || "（尚未取得）" %></p>
-  <p>狀態: <%= @project.status_text %><%= " (#{@project.analysis_status_text})" if @project.status == "importing" || @project.status == "syncing" %></p>
-  <p>最後同步: <%= @project.last_synced_at&.strftime("%Y-%m-%d %H:%M") || "尚未同步" %></p>
+<section class="mb-6 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="mb-4 text-lg font-semibold text-slate-900">專案資訊</h2>
+  <dl class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-4">
+    <div>
+      <dt class="text-xs uppercase text-slate-500">Owner</dt>
+      <dd class="text-slate-700"><%= @project.owner %></dd>
+    </div>
+    <div>
+      <dt class="text-xs uppercase text-slate-500">母分支</dt>
+      <dd class="font-mono text-slate-700"><%= @project.default_branch || "（尚未取得）" %></dd>
+    </div>
+    <div>
+      <dt class="text-xs uppercase text-slate-500">Base SHA</dt>
+      <dd class="font-mono text-slate-700"><%= @project.base_sha.presence || "（尚未取得）" %></dd>
+    </div>
+    <div>
+      <dt class="text-xs uppercase text-slate-500">狀態</dt>
+      <dd>
+        <%= status_badge(@project.status, @project.status_text) %>
+        <% if @project.status == "importing" || @project.status == "syncing" %>
+          <span class="ml-1 text-xs text-slate-500"><%= @project.analysis_status_text %></span>
+        <% end %>
+      </dd>
+    </div>
+    <div>
+      <dt class="text-xs uppercase text-slate-500">最後同步</dt>
+      <dd class="text-slate-700"><%= @project.last_synced_at&.strftime("%Y-%m-%d %H:%M") || "尚未同步" %></dd>
+    </div>
+  </dl>
   <% if @project.status == "failed" && @project.error_message.present? %>
-    <p>錯誤: <%= @project.error_message %></p>
+    <p class="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+      錯誤：<%= @project.error_message %>
+    </p>
   <% end %>
-  <%= button_to "同步 GitHub 母資料", sync_project_path(@project), method: :post %>
+  <%= button_to "同步 GitHub 母資料", sync_project_path(@project), method: :post,
+        class: "mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100" %>
 </section>
 
-<section>
-  <h2>搜尋</h2>
-  <%= form_with url: project_path(@project), method: :get do %>
-    <%= text_field_tag :q, @query, placeholder: "搜尋功能名稱、Controller、Model、檔案路徑..." %>
-    <%= hidden_field_tag :view, params[:view] if params[:view].present? %>
-    <%= submit_tag "搜尋" %>
+<section class="mb-6 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="mb-4 text-lg font-semibold text-slate-900">搜尋</h2>
+  <%= form_with url: project_path(@project), method: :get, class: "flex flex-wrap items-end gap-3" do %>
+    <div class="flex-1">
+      <%= text_field_tag :q, @query, placeholder: "搜尋功能名稱、Controller、Model、檔案路徑...",
+            class: "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+    </div>
+    <%= hidden_field_tag :view, @view if @view == "technical" %>
+    <%= submit_tag "搜尋", class: "rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" %>
   <% end %>
 
-  <% if @query %>
-    <h3>搜尋結果：「<%= @query %>」</h3>
-    <% if @matched_feature_ids.blank? && @matched_code_entities.blank? %>
-      <p>沒有符合的結果。</p>
-    <% end %>
-    <% if @matched_code_entities.present? %>
-      <h4>技術實體</h4>
-      <ul>
+  <% if @query && @matched_code_entities.present? %>
+    <div class="mt-4">
+      <h3 class="mb-2 text-sm font-semibold text-slate-700">技術實體：「<%= @query %>」</h3>
+      <ul class="space-y-1 text-sm text-slate-600">
         <% @matched_code_entities.each do |ce| %>
-          <li><%= ce.entity_type_text %>: <%= ce.name %>（<%= ce.file_path %>）</li>
+          <li><%= entity_type_badge(ce.entity_type_text) %> <%= ce.name %>（<span class="font-mono"><%= ce.file_path %></span>）</li>
         <% end %>
       </ul>
-    <% end %>
+    </div>
   <% end %>
 </section>
 
-<section>
-  <h2>業務模組</h2>
-  <p>
-    <%= link_to "業務視圖", project_path(@project, q: @query), class: (params[:view] == "technical" ? nil : "active") %>
-    |
-    <%= link_to "技術視圖", project_path(@project, view: "technical", q: @query), class: (params[:view] == "technical" ? "active" : nil) %>
-  </p>
+<section class="mb-6 rounded-xl border border-slate-200 bg-white">
+  <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <h2 class="text-lg font-semibold text-slate-900">業務功能</h2>
+    <div class="flex gap-2 text-sm">
+      <%= link_to "業務視圖", project_path(@project, q: @query),
+            class: "rounded-md px-3 py-1 font-medium #{@view == 'business' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}" %>
+      <%= link_to "技術視圖", project_path(@project, view: "technical", q: @query),
+            class: "rounded-md px-3 py-1 font-medium #{@view == 'technical' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}" %>
+    </div>
+  </div>
 
-  <% if @business_modules.empty? %>
-    <p>尚未建立業務模組（可能仍在分析中，或母分支沒有可辨識的路由）。</p>
-  <% else %>
-    <% @business_modules.each do |business_module| %>
-      <% features = business_module.business_features.to_a %>
-      <% features = features.select { |f| @matched_feature_ids.include?(f.id) } if @query %>
-      <% next if @query && features.empty? %>
-      <div>
-        <strong><%= business_module.name %></strong>
-        <ul>
-          <% features.each do |feature| %>
-            <li>
-              <%= feature.name %>
-              <% if params[:view] == "technical" %>
-                <ul>
-                  <% feature.code_entities.each do |code_entity| %>
-                    <li><%= code_entity.entity_type_text %>: <%= code_entity.name %>（<%= code_entity.file_path %>）</li>
-                  <% end %>
-                </ul>
-              <% end %>
-            </li>
-          <% end %>
-        </ul>
-      </div>
-    <% end %>
+  <%= render "projects/business_features_table",
+        business_features: @business_features, view: @view, query: @query,
+        page: @page, total_pages: @total_pages,
+        path: ->(p) { project_path(@project, q: @query, view: @view, page: p) } %>
+</section>
+
+<section class="mb-6 rounded-xl border border-slate-200 bg-white p-6">
+  <h2 class="mb-4 text-lg font-semibold text-slate-900">GitHub PR 分析</h2>
+  <%= form_with url: project_pull_request_analyses_path(@project), method: :post, class: "flex items-end gap-3" do %>
+    <div>
+      <%= label_tag :pr_number, "PR Number", class: "block text-sm font-medium text-slate-700" %>
+      <%= number_field_tag :pr_number, nil, placeholder: "65",
+            class: "mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+    </div>
+    <%= submit_tag "分析 PR", class: "rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" %>
   <% end %>
 </section>
 
-<section>
-  <h2>GitHub PR 分析</h2>
-  <%= form_with url: project_pull_request_analyses_path(@project), method: :post do %>
-    <%= label_tag :pr_number, "PR Number" %>
-    <%= number_field_tag :pr_number, nil, placeholder: "65" %>
-    <%= submit_tag "分析 PR" %>
-  <% end %>
-</section>
-
-<section>
-  <h2>歷史 PR 分析</h2>
+<section class="rounded-xl border border-slate-200 bg-white">
+  <h2 class="border-b border-slate-200 px-6 py-4 text-lg font-semibold text-slate-900">歷史 PR 分析</h2>
   <% if @project.pull_request_analyses.empty? %>
-    <p>尚無分析紀錄。</p>
+    <p class="px-6 py-8 text-sm text-slate-500">尚無分析紀錄。</p>
   <% else %>
-    <ul>
-      <% @project.pull_request_analyses.order(created_at: :desc).each do |pr_analysis| %>
-        <li>
-          <%= link_to "PR ##{pr_analysis.pr_number}", project_pull_request_analysis_path(@project, pr_analysis) %>
-          — <%= pr_analysis.status_text %>
-          <% if pr_analysis.pr_title.present? %> — <%= pr_analysis.pr_title %><% end %>
-          — <%= pr_analysis.created_at.strftime("%Y-%m-%d %H:%M") %>
-        </li>
-      <% end %>
-    </ul>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-slate-200 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-6 py-3">PR</th>
+            <th class="px-3 py-3">狀態</th>
+            <th class="px-3 py-3">標題</th>
+            <th class="px-3 py-3">建立時間</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% @project.pull_request_analyses.order(created_at: :desc).each do |pr_analysis| %>
+            <tr class="hover:bg-slate-50">
+              <td class="px-6 py-3 font-medium text-slate-900">
+                <%= link_to "PR ##{pr_analysis.pr_number}", project_pull_request_analysis_path(@project, pr_analysis), class: "hover:text-blue-600" %>
+              </td>
+              <td class="px-3 py-3"><%= status_badge(pr_analysis.status, pr_analysis.status_text) %></td>
+              <td class="px-3 py-3 text-slate-600"><%= pr_analysis.pr_title %></td>
+              <td class="px-3 py-3 text-slate-600"><%= pr_analysis.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   <% end %>
 </section>

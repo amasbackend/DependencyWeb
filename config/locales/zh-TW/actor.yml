@@ -3,6 +3,8 @@
 zh-TW:
   actor:
     projects:
+      sync:
+        in_progress: "此專案正在匯入或同步中，請等目前的作業完成後再按「同步」"
       import:
         repository_not_found: "GitHub Repository 找不到"
         unauthorized: "GitHub Token 權限不足"

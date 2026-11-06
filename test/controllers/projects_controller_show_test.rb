@@ -42,4 +42,21 @@ class ProjectsControllerShowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_no_match "客戶列表", response.body
   end
+
+  test "shows the resolved operator path breadcrumb for a feature" do
+    OperatorPathResolver.call(feature: @feature)
+
+    get project_path(@project)
+
+    assert_response :success
+    assert_match "客戶", response.body
+    assert_match "客戶列表", response.body
+  end
+
+  test "shows a needs-manual-review badge when no operator path has been resolved yet" do
+    get project_path(@project)
+
+    assert_response :success
+    assert_match "需要人工確認", response.body
+  end
 end

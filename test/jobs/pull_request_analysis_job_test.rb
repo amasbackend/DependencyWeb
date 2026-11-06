@@ -8,20 +8,22 @@ class PullRequestAnalysisJobTest < ActiveSupport::TestCase
     calls = []
     fake_build_result = OpenStruct.new(test_report: :fake_report, report_data: :fake_data)
 
-    PullRequests::Fetch.stub :call, ->(pull_request_analysis:) { calls << :fetch } do
-      Git::Diff.stub :call, ->(pull_request_analysis:) { calls << :diff } do
-        Git::ParseDiff.stub :call, ->(pull_request_analysis:) { calls << :parse_diff } do
-          Graphify::AnalyzePullRequest.stub :call, ->(pull_request_analysis:) { calls << :graphify } do
-            Impacts::MapCodeEntities.stub :call, ->(pull_request_analysis:) { calls << :map_code_entities } do
-              Impacts::MapBusinessFeatures.stub :call, ->(pull_request_analysis:) { calls << :map_business_features } do
-                Llm::AnalyzeTestScope.stub :call, ->(pull_request_analysis:) { calls << :llm_analyze } do
-                  Reports::Build.stub :call, ->(pull_request_analysis:) { calls << :report_build; fake_build_result } do
-                    Reports::RenderMarkdown.stub :call, ->(pull_request_analysis:, test_report:, report_data:) {
-                      calls << :render_markdown
-                      assert_equal :fake_report, test_report
-                      assert_equal :fake_data, report_data
-                    } do
-                      PullRequestAnalysisJob.new.perform(pull_request_analysis_id: pull_request_analysis.id)
+    Repositories::Clone.stub :call, ->(project:) { calls << :clone } do
+      PullRequests::Fetch.stub :call, ->(pull_request_analysis:) { calls << :fetch } do
+        Git::Diff.stub :call, ->(pull_request_analysis:) { calls << :diff } do
+          Git::ParseDiff.stub :call, ->(pull_request_analysis:) { calls << :parse_diff } do
+            Graphify::AnalyzePullRequest.stub :call, ->(pull_request_analysis:) { calls << :graphify } do
+              Impacts::MapCodeEntities.stub :call, ->(pull_request_analysis:) { calls << :map_code_entities } do
+                Impacts::MapBusinessFeatures.stub :call, ->(pull_request_analysis:) { calls << :map_business_features } do
+                  Llm::AnalyzeTestScope.stub :call, ->(pull_request_analysis:) { calls << :llm_analyze } do
+                    Reports::Build.stub :call, ->(pull_request_analysis:) { calls << :report_build; fake_build_result } do
+                      Reports::RenderMarkdown.stub :call, ->(pull_request_analysis:, test_report:, report_data:) {
+                        calls << :render_markdown
+                        assert_equal :fake_report, test_report
+                        assert_equal :fake_data, report_data
+                      } do
+                        PullRequestAnalysisJob.new.perform(pull_request_analysis_id: pull_request_analysis.id)
+                      end
                     end
                   end
                 end
@@ -33,7 +35,7 @@ class PullRequestAnalysisJobTest < ActiveSupport::TestCase
     end
 
     assert_equal [
-      :fetch, :diff, :parse_diff, :graphify, :map_code_entities, :map_business_features,
+      :clone, :fetch, :diff, :parse_diff, :graphify, :map_code_entities, :map_business_features,
       :llm_analyze, :report_build, :render_markdown,
     ], calls
   end

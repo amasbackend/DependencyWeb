@@ -26,9 +26,16 @@ class GraphifyGraphIndex
   # are excluded too — too weak/unclear a signal to assert an impact from.
   DEPENDENCY_RELATIONS = %w[calls inherits mixes_in extends].freeze
 
+  # The AST-structure edges excluded above — not a dependency, but exactly
+  # what visually anchors a method node to the class that defines it (and a
+  # class to its file) when rendering a subgraph.
+  STRUCTURAL_RELATIONS = %w[method contains].freeze
+
   def initialize(parsed_content)
+    all_links = parsed_content.fetch("links", [])
     @nodes = parsed_content.fetch("nodes", [])
-    @links = parsed_content.fetch("links", []).select { |l| DEPENDENCY_RELATIONS.include?(l["relation"]) }
+    @links = all_links.select { |l| DEPENDENCY_RELATIONS.include?(l["relation"]) }
+    @structural_links = all_links.select { |l| STRUCTURAL_RELATIONS.include?(l["relation"]) }
   end
 
   # Resolves a changed/known entity's graph node id from the same identity
@@ -68,6 +75,17 @@ class GraphifyGraphIndex
     match && match[:name]
   end
 
+  # Graphify's own Louvain community id/hub-derived name for a node — already
+  # computed and stored on every node by `graphify update` (no extra CLI flags
+  # or LLM calls needed), just never read by this app before.
+  def community_for(node_id)
+    node(node_id)&.dig("community")
+  end
+
+  def community_name_for(node_id)
+    node(node_id)&.dig("community_name")
+  end
+
   # Direct (1-hop) callers of a node: links whose target is this node.
   def direct_callers_of(node_id)
     callers_by_target[node_id] || []
@@ -79,6 +97,13 @@ class GraphifyGraphIndex
   # (e.g. `Order.find`) or a specific method node (e.g. `order.ship!`).
   def node_ids_for_class(class_name)
     node_ids_for_class_cache[class_name] || []
+  end
+
+  # The class/file nodes that structurally own the given nodes (one hop up a
+  # "method"/"contains" edge) — without them, a method-only subgraph renders
+  # as a scatter of disconnected dots instead of clustering under its class.
+  def structural_parent_ids(node_ids)
+    node_ids.flat_map { |id| structural_parents_by_target[id] || [] }.uniq
   end
 
   # Direct (1-hop) callers of *any* node belonging to a class.
@@ -126,6 +151,10 @@ class GraphifyGraphIndex
 
   def callers_by_target
     @callers_by_target ||= @links.group_by { |l| l["target"] }
+  end
+
+  def structural_parents_by_target
+    @structural_parents_by_target ||= @structural_links.group_by { |l| l["target"] }.transform_values { |ls| ls.map { |l| l["source"] } }
   end
 
   def class_name_by_file

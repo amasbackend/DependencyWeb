@@ -3,6 +3,11 @@ require_relative "../config/environment"
 require "rails/test_help"
 require "minitest/mock"
 
+# Safety net: a test that forgets with_scratch_repository_root must never
+# fall through to the real storage/repositories (an unwrapped destroy test
+# used to delete the real PrjJieZhou clone on every suite run).
+Rails.application.config.x.repository_root = Dir.mktmpdir("test-repository-root")
+
 module ActiveSupport
   class TestCase
     # Run tests in parallel with specified workers
@@ -161,5 +166,118 @@ module ActiveSupport
     teardown do
       @fixture_git_repos&.each { |dir| FileUtils.remove_entry(dir) if File.exist?(dir) }
     end
+
+    # Counts SQL queries issued inside the block and asserts it stays at or
+    # below `max` — used to catch N+1 regressions on pages that render one
+    # row per record (e.g. business feature tables), where a reintroduced
+    # per-row query would scale with the fixture size and blow past a small
+    # fixed cap, while a properly eager-loaded page would not.
+    def assert_query_count(max:)
+      count = 0
+      counter = ->(*) { count += 1 }
+
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+
+      assert count <= max, "expected at most #{max} SQL queries, got #{count}"
+    end
+
+    # A small Rails-shaped app (two order screens, a machine-facing API, an
+    # unused actor) for ScreenCatalog / ScreenImpactLocator / the LLM batch
+    # pipeline, served from memory via FakeSnapshot — same file contents a
+    # RepositorySnapshot would return, without a git repo.
+    def screen_fixture_snapshot(overrides = {})
+      FakeSnapshot.new(SCREEN_FIXTURE_FILES.merge(overrides))
+    end
+
+    SCREEN_FIXTURE_FILES = {
+      "app/controllers/orders_controller.rb" => <<~RUBY,
+        class OrdersController < ApplicationController
+          # GET /orders
+          def index
+            @orders = Orders::List.call.orders
+          end
+
+          # GET /orders/new
+          def new
+          end
+
+          # POST /orders
+          def create
+            actor = Orders::Create.result(params: order_params)
+            render_success_json(actor)
+          end
+
+          private
+
+          def order_params
+            params.require(:order).permit(:qty)
+          end
+        end
+      RUBY
+      "app/controllers/api/machines_controller.rb" => <<~RUBY,
+        class Api::MachinesController < ApplicationController
+          # POST /api/machines/report
+          def report
+            Machines::Report.call(params:)
+          end
+        end
+      RUBY
+      "app/actors/orders/list.rb" => "class Orders::List < Actor\n  def call\n  end\nend\n",
+      "app/actors/orders/create.rb" => "class Orders::Create < Actor\n  def call\n    Orders::Validate.call(order:)\n  end\nend\n",
+      "app/actors/orders/validate.rb" => "class Orders::Validate < Actor\n  def call\n    check_qty\n  end\n\n  def check_qty\n  end\nend\n",
+      "app/actors/machines/report.rb" => "class Machines::Report < Actor\n  def call\n  end\nend\n",
+      "app/actors/orphan.rb" => "class Orphan < Actor\n  def call\n  end\nend\n",
+      "app/views/layouts/_navbar.html.erb" => %(<%= link_to "訂單管理", orders_path %>\n),
+      "app/views/orders/index.html.erb" => <<~ERB,
+        <%= render "/layouts/navbar" %>
+        <h1>訂單管理</h1>
+        <%= link_to "新增訂單", new_order_path %>
+        <%# 開發註解：這行不應被當成畫面文字 %>
+        <order-search></order-search>
+      ERB
+      "app/views/orders/new.html.erb" => %(<h3>新增訂單&nbsp;<span>*為必填欄位</span></h3>\n<%= render "form" %>\n),
+      "app/views/orders/_form.html.erb" => %(<div id="order-form"><order-form :token="x"></order-form></div>\n),
+      "app/packs/src/javascripts/orders/OrderForm.vue" => <<~VUE,
+        <script setup>
+        import BaseInput from '@/src/vueComponent/BaseInput.vue'
+        // 送出前檢查（開發註解）
+        $.ajax({ url: '/orders', type: 'POST' })
+        </script>
+        <template>
+          <label>數量</label><base-input />
+          <button>送出</button>
+        </template>
+      VUE
+      "app/packs/src/javascripts/orders/OrderSearch.vue" => "<template><button>搜尋</button></template>\n",
+      "app/packs/src/vueComponent/BaseInput.vue" => "<template><input /></template>\n",
+      "app/packs/src/javascripts/orders/form.js" => "import OrderForm from '@/src/javascripts/orders/OrderForm.vue'\n",
+      "config/locales/zh-TW/model.yml" => <<~YAML,
+        zh-TW:
+          activerecord:
+            models:
+              order: 訂單
+            attributes:
+              order:
+                qty: 數量
+      YAML
+      "db/migrate/20260101000000_add_qty_to_orders.rb" => "class AddQtyToOrders < ActiveRecord::Migration[7.1]\nend\n",
+    }.freeze
   end
+end
+
+# In-memory stand-in for RepositorySnapshot ({ path => content }).
+class FakeSnapshot
+  def initialize(files)
+    @files = files
+  end
+
+  def paths
+    @files.keys
+  end
+
+  def read(path)
+    @files[path]
+  end
+
+  def preload(_paths); end
 end

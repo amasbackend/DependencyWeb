@@ -7,11 +7,50 @@ module Llm
   class TestScopeSchema
     class ValidationError < StandardError; end
 
+    # Tracks the *validation rules* below independently of TestScopePrompt's
+    # skill_version — the two change for different reasons (a prompt wording
+    # tweak doesn't necessarily change what's required in the response, and
+    # vice versa). Bump when the rules in #validate actually change; mirrored
+    # in skills/test_scope/output_schema.json for external review.
+    VERSION = "v2".freeze
+
     REQUIRED_STRING = ->(v) { v.is_a?(String) && v.present? }
     CASE_TYPES = %w[core_change direct_impact indirect_impact].freeze
+    CHUNK_CASE_TYPES = (CASE_TYPES + %w[regression]).freeze
 
     def self.validate(data)
       new(data).validate
+    end
+
+    # One batch's answer (skills/test_scope/skill.md's shape): every case must
+    # sit on one of the batch's screens and cite only the batch's own refs —
+    # the two things that keep the model from inventing pages or evidence.
+    def self.validate_chunk(data, screen_keys:, refs:)
+      return [ "response is not a JSON object" ] unless data.is_a?(Hash)
+
+      errors = []
+      cases = data["test_cases"]
+      return [ "test_cases must be an array" ] unless cases.is_a?(Array)
+
+      cases.each_with_index do |c, i|
+        prefix = "test_cases[#{i}]"
+        next errors << "#{prefix} must be an object" unless c.is_a?(Hash)
+
+        %w[name verification_purpose expected_result].each do |key|
+          errors << "#{prefix}.#{key} is missing" unless REQUIRED_STRING.call(c[key])
+        end
+        errors << "#{prefix}.steps must be a non-empty array" unless c["steps"].is_a?(Array) && c["steps"].any?
+        errors << "#{prefix}.case_type must be one of #{CHUNK_CASE_TYPES}" unless CHUNK_CASE_TYPES.include?(c["case_type"])
+        errors << "#{prefix}.screen_key #{c['screen_key'].inspect} is not one of this batch's screens" unless screen_keys.include?(c["screen_key"])
+
+        cited = Array(c["impact_item_refs"])
+        errors << "#{prefix}.impact_item_refs must be a non-empty array" if cited.empty?
+        unknown = cited - refs
+        errors << "#{prefix}.impact_item_refs cites unknown refs #{unknown.join(', ')}" if unknown.any?
+      end
+
+      errors << "uncertain_items must be an array" unless data.fetch("uncertain_items", []).is_a?(Array)
+      errors
     end
 
     def initialize(data)

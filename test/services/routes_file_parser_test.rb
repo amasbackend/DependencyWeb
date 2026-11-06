@@ -78,4 +78,21 @@ class RoutesFileParserTest < ActiveSupport::TestCase
     actions = @result[:routes].select { |r| r.controller == "OrdersController" }.map(&:action)
     assert_equal %w[index show], actions.sort
   end
+
+  test "a tool directive in the trailing-comment slot is not taken as a label" do
+    path = Tempfile.new([ "routes", ".rb" ]).tap { |f| f.write(<<~RUBY); f.close }.path
+      Rails.application.routes.draw do
+        resources :assembles do # rubocop:disable Metrics/BlockLength
+          get :print_tag, on: :member # 列印標籤
+        end
+      end
+    RUBY
+
+    result = RoutesFileParser.call(routes_path: path)
+
+    assert_nil result[:resource_comments]["AssemblesController"]
+    assert_equal "列印標籤", result[:routes].find { |r| r.action == "print_tag" }.comment
+  ensure
+    File.delete(path) if path && File.exist?(path)
+  end
 end

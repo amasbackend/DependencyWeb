@@ -16,11 +16,13 @@ class ProjectsControllerDestroyTest < ActionDispatch::IntegrationTest
   end
 
   test "destroy succeeds even when there is no repository directory to clean up" do
-    project = Project.create!(owner: "AMASTek", repository_name: "PrjJieZhou", status: "pending")
+    with_scratch_repository_root do
+      project = Project.create!(owner: "AMASTek", repository_name: "PrjJieZhou", status: "pending")
 
-    delete project_path(project)
+      delete project_path(project)
 
-    assert_redirected_to root_path
-    assert_not Project.exists?(project.id)
+      assert_redirected_to root_path
+      assert_not Project.exists?(project.id)
+    end
   end
 end

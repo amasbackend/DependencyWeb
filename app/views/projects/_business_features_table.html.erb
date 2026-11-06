@@ -1,0 +1,26 @@
+<% if business_features.empty? %>
+  <p class="px-6 py-8 text-sm text-slate-500">
+    <%= query.present? ? "沒有符合的業務功能。" : "尚未建立業務功能（可能仍在分析中，或母分支沒有可辨識的路由）。" %>
+  </p>
+<% else %>
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="border-b border-slate-200 text-xs uppercase text-slate-500">
+        <tr>
+          <th class="w-8 px-6 py-3"></th>
+          <th class="px-3 py-3">模組</th>
+          <th class="px-3 py-3">功能</th>
+          <th class="px-3 py-3">操作路徑</th>
+          <th class="px-3 py-3">來源</th>
+          <% if view == "technical" %>
+            <th class="px-3 py-3">技術實體數</th>
+          <% end %>
+        </tr>
+      </thead>
+      <% business_features.each do |feature| %>
+        <%= render "projects/business_feature_row", feature: feature, view: view %>
+      <% end %>
+    </table>
+  </div>
+  <%= render "shared/pagination", page: page, total_pages: total_pages, path: path %>
+<% end %>

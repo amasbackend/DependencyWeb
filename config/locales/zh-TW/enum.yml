@@ -111,3 +111,19 @@ zh-TW:
         direct_impact: "直接影響"
         indirect_impact: "間接影響"
         regression: "回歸測試"
+    operator_path:
+      confidence_source:
+        route_comment_derived: "路由註解推導"
+        i18n_derived: "語系推導"
+        view_text_derived: "頁面文字推導"
+        crud_convention_derived: "CRUD 慣例推導"
+        controller_action_only: "僅控制器動作"
+        manual: "手動"
+    operator_path_segment:
+      evidence_kind:
+        route_comment_derived: "路由註解推導"
+        i18n_derived: "語系推導"
+        view_text_derived: "頁面文字推導"
+        crud_convention_derived: "CRUD 慣例推導"
+        controller_action_only: "僅控制器動作"
+        manual: "手動"

@@ -67,10 +67,19 @@ class RoutesFileParser
         in_string = true
         quote_char = char
       elsif char == "#"
-        return [ line[0...index], line[(index + 1)..].to_s.strip.presence ]
+        return [ line[0...index], label_comment(line[(index + 1)..].to_s.strip.presence) ]
       end
     end
     [ line, nil ]
+  end
+
+  # Tool directives (`# rubocop:disable Metrics/BlockLength`) share the
+  # trailing-comment slot with the human labels this parser is after — real
+  # data had one become a business module's name.
+  TOOL_DIRECTIVE = /\A(?:rubocop|standard|steep|typed|sorbet|frozen_string_literal|:nodoc:|TODO|FIXME|NOTE|HACK)\b/i
+
+  def label_comment(comment)
+    comment unless comment&.match?(TOOL_DIRECTIVE)
   end
 
   def process_line(raw_line)

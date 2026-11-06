@@ -26,7 +26,7 @@ module Reports
       [
         header, changes_section, overview_section, preparation_section,
         cases_section, pass_criteria_section, suggested_order_section,
-        uncertain_items_section, appendix_section,
+        uncertain_items_section, screen_map_section, appendix_section,
       ].compact.join("\n\n---\n\n")
     end
 
@@ -128,12 +128,36 @@ module Reports
       items = report_data[:uncertain_items]
       return nil if items.blank?
 
-      lines = items.map { |item| "- **#{item['description']}** — #{item['reason']}" }
+      lines = items.map do |item|
+        refs = Array(item["refs"]).presence
+        "- **#{item['description']}**#{refs ? "（#{refs.join('、')}）" : ''} — #{item['reason']}"
+      end
       <<~MD.strip
         ## 需要人工確認
 
         以下項目因證據不足，無法由本系統自動判定測試範圍，請工程或資訊人員協助確認：
 
+        #{lines.join("\n")}
+      MD
+    end
+
+    # Which screen each change was traced to, and why — computed by
+    # ScreenImpactLocator, not the LLM, so testers and engineers can check
+    # the mapping itself.
+    def screen_map_section
+      rows = report_data[:screen_map]
+      return nil if rows.blank?
+
+      lines = rows.map do |r|
+        target = r["screens"].presence&.first(4)&.join("<br>") || r["category"] || "（無）"
+        target += "<br>…等 #{r['screens'].size} 個畫面" if r["screens"].to_a.size > 4
+        "| #{cell(r['ref'])} | #{cell(r['subject'])} | #{cell(target)} | #{cell(Array(r['trace']).first)} |"
+      end
+      <<~MD.strip
+        ## 附錄：異動與畫面對照（系統依程式呼叫關係自動判斷）
+
+        | 代號 | 異動項目 | 對應畫面／類別 | 判斷依據 |
+        |------|---------|---------------|---------|
         #{lines.join("\n")}
       MD
     end

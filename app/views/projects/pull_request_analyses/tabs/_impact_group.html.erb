@@ -1,0 +1,59 @@
+<% level_counts = dependents.group_by(&:impact_level_text).transform_values(&:size)
+   change_item = items.find { |i| i.impact_level == "direct_change" } %>
+<details class="rounded-lg border border-slate-200 bg-white">
+  <summary class="flex cursor-pointer flex-wrap items-center gap-2 px-4 py-2 text-sm hover:bg-slate-50">
+    <span class="font-mono text-slate-800"><%= title %></span>
+    <% if entity %>
+      <%= change_kind_badge(entity.change_kind, entity.change_kind_text) %>
+      <% if entity.validation_changed %><span class="text-xs text-amber-700">驗證變更</span><% end %>
+      <% if entity.association_changed %><span class="text-xs text-amber-700">關聯變更</span><% end %>
+    <% end %>
+    <span class="ml-auto text-xs text-slate-500">
+      <%= level_counts.any? ? level_counts.map { |label, count| "#{label} #{count}" }.join(" · ") : "無其他依賴" %>
+    </span>
+  </summary>
+
+  <div class="border-t border-slate-100">
+    <% if dependents.empty? %>
+      <p class="px-4 py-3 text-sm text-slate-500">
+        Graphify 沒有找到依賴這個異動的其他程式<% if change_item&.reason.present? %>（<%= change_item.reason %>）<% end %>。
+        這不代表沒有影響，對應的畫面請見上方「異動與畫面對照」。
+      </p>
+    <% else %>
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-slate-100 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-4 py-2">風險</th>
+            <th class="px-3 py-2">影響類型</th>
+            <th class="px-3 py-2">受影響程式</th>
+            <th class="px-3 py-2">業務功能</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% dependents.each do |item| %>
+            <tr class="align-top hover:bg-slate-50">
+              <td class="px-4 py-2"><%= risk_badge(item.risk_level, item.risk_label) %></td>
+              <td class="px-3 py-2 text-slate-600"><%= item.impact_level_text %></td>
+              <td class="px-3 py-2 font-mono text-xs text-slate-700">
+                <% if item.code_entity %>
+                  <%= entity_type_badge(item.code_entity.entity_type_text) %>
+                  <%= [ item.code_entity.class_name, item.code_entity.method_name ].compact.join("#") %>
+                <% else %>
+                  <span class="font-sans text-slate-500">（無法對應到已知技術實體）</span>
+                <% end %>
+              </td>
+              <td class="px-3 py-2">
+                <% if item.business_feature %>
+                  <%= render "shared/operator_path", business_feature: item.business_feature %>
+                <% else %>
+                  <span class="text-slate-400">—</span>
+                <% end %>
+                <% if item.needs_manual_review %><%= render "shared/badge", text: "需要人工確認", variant: :warning %><% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+</details>

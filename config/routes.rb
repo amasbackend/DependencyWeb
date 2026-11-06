@@ -13,7 +13,10 @@ Rails.application.routes.draw do
     resources :pull_request_analyses, only: [ :create, :show ], controller: "projects/pull_request_analyses" do
       member do
         get :report
+        get :graph
       end
+
+      resources :graphify_nodes, only: [ :show ], controller: "projects/graphify_nodes"
     end
   end
 

@@ -17,9 +17,13 @@ module Projects
       self.parsed_routes = parsed[:routes]
       self.resource_comments = parsed[:resource_comments]
 
+      # Updated in place by slug — past analyses' impact items and test cases
+      # point at these modules' features, so a re-sync must not recreate
+      # them (that silently dropped every historical link). Only modules
+      # whose controller is gone from routes.rb are removed.
       Project.transaction do
-        project.business_modules.destroy_all
-        parsed_routes.map(&:controller).uniq.each { |controller| create_module(controller) }
+        kept = parsed_routes.map(&:controller).uniq.map { |controller| upsert_module(controller) }
+        project.business_modules.where.not(id: kept.map(&:id)).destroy_all
       end
     rescue StandardError => e
       fail_with(I18n.t("actor.projects.build_business_modules.failed", message: e.message))
@@ -36,15 +40,37 @@ module Projects
       RoutesFileParser.call(routes_path: routes_path)
     end
 
-    def create_module(controller)
+    def upsert_module(controller)
       comment = resource_comments[controller]
-      name = comment.presence&.delete_suffix("管理") || humanize_controller(controller)
-      source = comment.present? ? "locale_derived" : "route_derived"
+      menu = comment.blank? && menu_label(controller)
+      name = comment.presence&.delete_suffix("管理") || menu || humanize_controller(controller)
+      source = comment.present? || menu ? "locale_derived" : "route_derived"
 
-      project.business_modules.find_or_create_by!(slug: controller.parameterize) do |mod|
-        mod.name = name
-        mod.source = source
+      project.business_modules.find_or_initialize_by(slug: controller.parameterize).tap do |mod|
+        mod.update!(name: name, source: source)
       end
+    end
+
+    # With no Chinese routes.rb comment, the name operators actually see in
+    # the app's own navbar (ScreenCatalog) — "庫存查詢" → "庫存" — beats a
+    # humanized English controller name. Best effort: nil if the catalog
+    # can't be built.
+    def menu_label(controller)
+      controller_path = controller.delete_suffix("Controller").underscore
+      screens = screen_catalog&.all&.select { |s| s.controller_path == controller_path } || []
+      label = ([ screen_catalog&.[]("#{controller_path}#index")&.menu_name ] + screens.map(&:menu_name))
+                .compact.find { |name| name.match?(/\p{Han}/) }
+      # "原料加工 工單列表" → "原料加工 工單": feature names add 列表/新增… themselves
+      label&.sub(/\s*(?:管理|查詢|設定|列表)\z/, "")&.strip&.presence
+    end
+
+    def screen_catalog
+      return @screen_catalog if defined?(@screen_catalog)
+
+      @screen_catalog = ScreenCatalog.call(snapshot: RepositorySnapshot.new(git_dir: bare_repo_path, sha: project.base_sha))
+    rescue StandardError => e
+      Rails.logger.warn("[BuildBusinessModules:#{project.id}] screen catalog unavailable: #{e.message}")
+      @screen_catalog = nil
     end
 
     # Includes the namespace, not just the controller's own name — real data

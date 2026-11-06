@@ -1,0 +1,21 @@
+<% path = business_feature.operator_path %>
+<div class="flex flex-wrap items-center gap-1">
+  <% if path.present? && path.segments.any? %>
+    <% path.segments.each_with_index do |segment, index| %>
+      <% if index > 0 %>
+        <span class="text-slate-500">→</span>
+      <% end %>
+      <span class="text-slate-700"><%= segment.label %></span>
+    <% end %>
+    <% if path.needs_manual_review %>
+      <%= render "shared/badge", text: "需要人工確認", variant: :warning %>
+    <% end %>
+  <% else %>
+    <%# No OperatorPath resolved yet (e.g. built before Phase 4, or not yet re-synced)
+        — fall back to the raw module/feature names rather than showing nothing. %>
+    <span class="text-slate-700"><%= business_feature.business_module.name %></span>
+    <span class="text-slate-500">→</span>
+    <span class="text-slate-700"><%= business_feature.name %></span>
+    <%= render "shared/badge", text: "需要人工確認", variant: :warning %>
+  <% end %>
+</div>

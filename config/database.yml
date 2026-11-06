@@ -14,10 +14,22 @@ primary_default: &primary_default
 # Solid Queue's own tables — local SQLite. The shared MySQL server above is 5.7,
 # which doesn't support SKIP LOCKED (needs MySQL 8+), so Solid Queue's dispatcher
 # cannot run against it. See docs/architecture_plan.md §14.
+#
+# `timeout` (ms) sets SQLite's busy_timeout — without it, PRAGMA busy_timeout
+# defaults to 0 (confirmed by querying a live connection), so any writer that
+# finds the file locked fails *immediately* with SQLite3::BusyException
+# instead of waiting. `bin/dev` boots web + Solid Queue's
+# Supervisor/Dispatcher/Worker (each its own OS process, each opening its own
+# connection) within the same instant, and Supervisor/Dispatcher/Worker each
+# write their own row to solid_queue_processes on boot — near-simultaneous
+# writes from separate processes are exactly what SQLite's locking model
+# handles worst, and reproduced this exact crash. 5s is enough to ride out
+# that boot-time contention without masking a real stuck lock.
 queue_default: &queue_default
   <<: *default
   adapter: sqlite3
   migrations_paths: db/queue_migrate
+  timeout: 5000
 
 development:
   primary:

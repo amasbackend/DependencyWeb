@@ -8,6 +8,9 @@ gem "rails", "~> 7.1.2"
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
 gem "sprockets-rails"
 
+# Utility-first CSS (mirrors /home/micky/DependencyWeb's live styling mechanism)
+gem "tailwindcss-rails"
+
 # Use MySQL as the database for Active Record (mirrors /home/micky/DependencyWeb)
 gem "mysql2"
 

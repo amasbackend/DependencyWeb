@@ -8,10 +8,16 @@ module Projects
     # explicitly chose instead of trusting GitHub's default.
     input :default_branch, default: nil, allow_nil: true
     output :project
+    # True when the project was already imported — nothing new is queued, so
+    # the caller must not tell the user an import has started.
+    output :already_imported, default: false
 
     def call
       self.project = Project.find_or_initialize_by(owner: owner, repository_name: repository_name)
-      return if project.persisted?
+      if project.persisted?
+        self.already_imported = true
+        return
+      end
 
       project.default_branch = default_branch if default_branch.present?
 

@@ -49,6 +49,7 @@ module Reports
         manual_checks: Array(structured["manual_checks"]),
         uncertain_items: Array(structured["uncertain_items"]),
         suggested_order_groups: suggested_order_groups(cases),
+        screen_map: Array(structured["screen_map"]),
       }
     end
 

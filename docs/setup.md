@@ -62,7 +62,7 @@ If this raises `GraphifyCli::NotInstalled`, the binary isn't on `PATH` for the R
 Pick one of three vendors — switching is a config change, never a code change (`app/services/llm/provider.rb`):
 
 ```bash
-LLM_PROVIDER=gemini          # or: openai | claude
+LLM_PROVIDER=gemini          # or: openai | claude | claude_cli (no key — uses the logged-in `claude` CLI's claude.ai seat; see docs/commands.md)
 GEMINI_API_KEY=...           # or: OPENAI_API_KEY | ANTHROPIC_API_KEY, matching the provider above
 LLM_MODEL=gemini-2.5-flash   # optional — each provider has a built-in default (see LlmConfig::DEFAULT_MODELS)
 TEST_SCOPE_PROMPT_VERSION=v1 # optional, defaults to "v1" — bump when the prompt itself changes, so historical

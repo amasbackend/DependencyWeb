@@ -25,6 +25,11 @@ worker_timeout 3600 if ENV.fetch("RAILS_ENV", "development") == "development"
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT") { 3000 }
 
+# Default binds to 127.0.0.1 only — unreachable from another device or via
+# this machine's LAN IP (e.g. from a Windows host browser into WSL, or a
+# phone/second computer on the same network). Bind all interfaces instead.
+bind "tcp://0.0.0.0:#{ENV.fetch("PORT") { 3000 }}"
+
 # Specifies the `environment` that Puma will run in.
 environment ENV.fetch("RAILS_ENV") { "development" }
 

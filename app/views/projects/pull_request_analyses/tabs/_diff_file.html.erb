@@ -1,0 +1,53 @@
+<details class="border-b border-slate-200 last:border-b-0">
+  <summary id="changed-file-<%= file.id %>" class="flex cursor-pointer scroll-mt-4 items-center justify-between gap-3 px-4 py-2 text-sm hover:bg-slate-50">
+    <span class="flex min-w-0 items-center gap-2 font-mono text-slate-700">
+      <%= change_kind_badge(file.change_type, file.change_type_text) %>
+      <span class="truncate"><%= file.previous_file_path.present? ? "#{file.previous_file_path} → #{file.file_path}" : file.file_path %></span>
+    </span>
+    <span class="flex shrink-0 items-center gap-3 text-xs">
+      <% if entities.any? %><span class="text-slate-500"><%= entities.size %> 個類別／方法</span><% end %>
+      <span><span class="text-emerald-600">+<%= file.additions %></span> <span class="text-red-600">-<%= file.deletions %></span></span>
+    </span>
+  </summary>
+
+  <% if entities.any? %>
+    <div class="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs">
+      <% entities.each do |entity| %>
+        <span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5">
+          <span class="font-mono text-slate-700"><%= changed_entity_label(entity) %></span>
+          <span class="text-slate-500"><%= entity.change_kind_text %></span>
+          <% if entity.validation_changed %><span class="text-amber-700">· 驗證變更</span><% end %>
+          <% if entity.association_changed %><span class="text-amber-700">· 關聯變更</span><% end %>
+          <% if entity.code_entity_id.blank? %><span class="text-slate-500">· 母分支無對應</span><% end %>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if file.binary? %>
+    <p class="px-4 py-3 text-sm text-slate-500">二進位檔案，無法顯示差異。</p>
+  <% elsif file.patch.blank? %>
+    <p class="px-4 py-3 text-sm text-slate-500">（無 diff 內容）</p>
+  <% else %>
+    <div class="overflow-x-auto border-t border-slate-100">
+      <table class="w-full border-collapse font-mono text-xs">
+        <tbody>
+          <% DiffPatchParser.call(patch: file.patch).each do |hunk| %>
+            <tr class="bg-blue-50 text-blue-700">
+              <td class="w-12 select-none px-2 py-1 text-right"></td>
+              <td class="w-12 select-none px-2 py-1 text-right"></td>
+              <td class="px-3 py-1"><%= hunk.header %></td>
+            </tr>
+            <% hunk.lines.each do |line| %>
+              <tr class="<%= diff_line_row_class(line.type) %>">
+                <td class="w-12 select-none px-2 py-1 text-right text-slate-500"><%= line.old_line_no %></td>
+                <td class="w-12 select-none px-2 py-1 text-right text-slate-500"><%= line.new_line_no %></td>
+                <td class="whitespace-pre px-3 py-1 text-slate-700"><%= diff_line_prefix(line.type) %><%= line.content %></td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</details>

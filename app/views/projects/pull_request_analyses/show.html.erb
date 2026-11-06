@@ -1,46 +1,108 @@
-<h1>PR #<%= @pull_request_analysis.pr_number %></h1>
-<p><%= link_to "← 返回專案", project_path(@project) %></p>
+<p class="mb-4">
+  <%= link_to "← 返回專案", project_path(@project), class: "text-sm text-slate-500 hover:text-blue-600" %>
+</p>
 
-<section>
-  <h2>狀態</h2>
-  <p><%= @pull_request_analysis.status_text %></p>
+<div class="mb-6 rounded-xl border border-slate-200 bg-white p-6">
+  <div class="flex flex-wrap items-start justify-between gap-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">PR #<%= @pull_request_analysis.pr_number %></h1>
+      <% if @pull_request_analysis.pr_title.present? %>
+        <p class="mt-1 text-slate-600"><%= @pull_request_analysis.pr_title %></p>
+      <% end %>
+      <div class="mt-3">
+        <%= status_badge(@pull_request_analysis.status, @pull_request_analysis.status_text) %>
+      </div>
+    </div>
+
+    <% llm_runs = @pull_request_analysis.test_reports.where(generated_by: "llm").to_a %>
+    <dl class="grid grid-cols-2 gap-x-6 gap-y-1 text-right text-sm sm:grid-cols-4">
+      <div>
+        <dt class="text-xs uppercase text-slate-500">修改檔案</dt>
+        <dd class="text-lg font-semibold text-slate-900"><%= @pull_request_analysis.changed_files.count %></dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">受影響技術實體</dt>
+        <dd class="text-lg font-semibold text-slate-900">
+          <%= @pull_request_analysis.impact_items.where.not(code_entity_id: nil).distinct.count(:code_entity_id) %>
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">受影響業務功能</dt>
+        <dd class="text-lg font-semibold text-slate-900">
+          <%= @pull_request_analysis.impact_items.where.not(business_feature_id: nil).distinct.count(:business_feature_id) %>
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">LLM 費用（估算）</dt>
+        <dd class="text-lg font-semibold text-slate-900">
+          <%= llm_runs.any? ? llm_cost_text(total_llm_cost_usd(llm_runs)) : "—" %>
+        </dd>
+        <% if llm_runs.any? %><dd class="text-xs text-slate-500">共 <%= llm_runs.size %> 次產生</dd><% end %>
+      </div>
+    </dl>
+  </div>
+
   <% if @pull_request_analysis.status == "failed" && @pull_request_analysis.error_message.present? %>
-    <p>錯誤（<%= @pull_request_analysis.error_stage %>）：<%= @pull_request_analysis.error_message %></p>
+    <p class="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+      錯誤（<%= @pull_request_analysis.error_stage %>）：<%= @pull_request_analysis.error_message %>
+    </p>
   <% end %>
 
   <% if @pull_request_analysis.pr_title.present? %>
-    <p>標題：<%= @pull_request_analysis.pr_title %></p>
-    <p>Base：<%= @pull_request_analysis.base_branch %>　Head：<%= @pull_request_analysis.head_branch %></p>
+    <dl class="mt-4 grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
+      <div>
+        <dt class="text-xs uppercase text-slate-500">Base</dt>
+        <dd class="font-mono text-slate-700"><%= @pull_request_analysis.base_branch %></dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase text-slate-500">Head</dt>
+        <dd class="font-mono text-slate-700"><%= @pull_request_analysis.head_branch %></dd>
+      </div>
+    </dl>
 
     <% if @pull_request_analysis.base_branch.present? && @pull_request_analysis.base_branch != @project.default_branch %>
-      <p>
-        ⚠️ 此 PR 的 Base Branch（<%= @pull_request_analysis.base_branch %>）
-        與專案目前母分支（<%= @project.default_branch %>）不同。
-        分析將以此 PR 實際的 Base SHA 為準，不會視為相同分支。
-      </p>
+      <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p class="font-medium">⚠ Base Branch 不一致</p>
+        <p class="mt-1">
+          此 PR：<span class="font-mono"><%= @pull_request_analysis.base_branch %></span>
+          　目前 Project：<span class="font-mono"><%= @project.default_branch %></span>
+        </p>
+        <p class="mt-1 text-amber-700">本次分析使用 PR 實際 Base SHA，不會視為相同分支。</p>
+      </div>
     <% end %>
 
-    <details>
-      <summary>PR 詳細資訊</summary>
-      <p>作者：<%= @pull_request_analysis.pr_author %></p>
-      <p>描述：<%= simple_format(@pull_request_analysis.pr_description.presence || "（無）") %></p>
-      <p>Base SHA：<%= @pull_request_analysis.base_sha %></p>
-      <p>Head SHA：<%= @pull_request_analysis.head_sha %></p>
-      <p>Merge Base：<%= @pull_request_analysis.merge_base_sha || "（尚未取得）" %></p>
+    <details class="mt-4">
+      <summary class="cursor-pointer text-sm text-slate-500 hover:text-slate-700">PR 詳細資訊</summary>
+      <dl class="mt-2 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <div>
+          <dt class="text-xs uppercase text-slate-500">作者</dt>
+          <dd class="text-slate-700"><%= @pull_request_analysis.pr_author %></dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase text-slate-500">Base SHA</dt>
+          <dd class="font-mono text-slate-700"><%= @pull_request_analysis.base_sha %></dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase text-slate-500">Head SHA</dt>
+          <dd class="font-mono text-slate-700"><%= @pull_request_analysis.head_sha %></dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase text-slate-500">Merge Base</dt>
+          <dd class="font-mono text-slate-700"><%= @pull_request_analysis.merge_base_sha || "（尚未取得）" %></dd>
+        </div>
+        <div class="sm:col-span-2">
+          <dt class="text-xs uppercase text-slate-500">描述</dt>
+          <dd class="text-slate-700"><%= simple_format(@pull_request_analysis.pr_description.presence || "（無）") %></dd>
+        </div>
+      </dl>
     </details>
   <% end %>
+</div>
 
-  <p>
-    修改檔案：<%= @pull_request_analysis.changed_files.count %>
-    受影響技術實體：<%= @pull_request_analysis.impact_items.where.not(code_entity_id: nil).distinct.count(:code_entity_id) %>
-    受影響業務功能：<%= @pull_request_analysis.impact_items.where.not(business_feature_id: nil).distinct.count(:business_feature_id) %>
-  </p>
-</section>
-
-<nav>
+<nav class="mb-6 flex flex-wrap gap-1 border-b border-slate-200">
   <% Projects::PullRequestAnalysesController::TABS.each do |tab| %>
     <%= link_to tab_label(tab), project_pull_request_analysis_path(@project, @pull_request_analysis, tab: tab),
-          class: (@tab == tab ? "active" : nil) %>
+          class: "-mb-px border-b-2 px-3 py-2 text-sm font-medium #{@tab == tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}" %>
   <% end %>
 </nav>
 

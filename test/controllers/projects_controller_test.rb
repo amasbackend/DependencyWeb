@@ -41,4 +41,17 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
 
     assert_nil Project.find_by(repository_name: "PrjJieZhou").default_branch
   end
+
+  test "re-submitting an already imported project says so instead of claiming an import started" do
+    Project.create!(owner: "AMASTek", repository_name: "PrjJieZhou", status: "ready")
+    enqueued = false
+
+    ProjectImportJob.stub :perform_later, ->(**) { enqueued = true } do
+      post projects_path, params: { project: { owner: "AMASTek", repository_name: "PrjJieZhou" } }
+    end
+
+    assert_redirected_to root_path
+    assert_match "已經匯入過", flash[:notice]
+    assert_not enqueued
+  end
 end

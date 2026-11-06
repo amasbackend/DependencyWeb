@@ -1,0 +1,67 @@
+<tbody data-controller="disclosure" class="divide-y divide-slate-100">
+  <tr class="group hover:bg-slate-50">
+    <td class="w-8 px-6 py-3">
+      <button type="button" data-action="disclosure#toggle" aria-expanded="false"
+              aria-label="展開專案詳細資訊"
+              class="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
+        <svg data-disclosure-target="icon" class="h-4 w-4 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </td>
+    <td class="px-3 py-3 font-medium text-slate-900">
+      <%= link_to project.github_full_name, project_path(project), class: "hover:text-blue-600" %>
+    </td>
+    <td class="px-3 py-3 font-mono text-slate-600"><%= project.default_branch || "（尚未取得）" %></td>
+    <td class="px-3 py-3 font-mono text-slate-600" title="<%= project.base_sha %>">
+      <%= project.base_sha.present? ? project.base_sha.first(7) : "—" %>
+    </td>
+    <td class="px-3 py-3 text-slate-600"><%= project.business_features.size %></td>
+    <td class="px-3 py-3">
+      <%= status_badge(project.status, project.status_text) %>
+      <% if project.status == "importing" %>
+        <span class="ml-1 text-xs text-slate-500"><%= project.analysis_status_text %></span>
+      <% end %>
+    </td>
+    <td class="px-3 py-3 text-slate-600">
+      <%= project.last_synced_at&.strftime("%Y-%m-%d %H:%M") || "尚未同步" %>
+    </td>
+    <td class="px-3 py-3">
+      <div class="flex items-center gap-2">
+        <%= button_to "同步", sync_project_path(project), method: :post,
+              class: "rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100" %>
+        <%= button_to "刪除", project_path(project), method: :delete,
+              form: { data: { turbo_confirm: "確定要刪除「#{project.github_full_name}」嗎？此動作無法復原。" } },
+              class: "rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50" %>
+      </div>
+    </td>
+  </tr>
+  <tr data-disclosure-target="content" class="hidden bg-slate-50">
+    <td></td>
+    <td colspan="7" class="px-3 py-4">
+      <dl class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
+        <div>
+          <dt class="text-xs uppercase text-slate-500">Repository</dt>
+          <dd class="font-mono text-slate-700"><%= project.repository_name %></dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase text-slate-500">Business Module 數</dt>
+          <dd class="text-slate-700"><%= project.business_modules.size %></dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase text-slate-500">Analysis Status</dt>
+          <dd class="text-slate-700"><%= project.analysis_status_text %></dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase text-slate-500">Base SHA（完整）</dt>
+          <dd class="font-mono text-slate-700 break-all"><%= project.base_sha.presence || "—" %></dd>
+        </div>
+      </dl>
+      <% if project.status == "failed" && project.error_message.present? %>
+        <p class="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          錯誤：<%= project.error_message %>
+        </p>
+      <% end %>
+    </td>
+  </tr>
+</tbody>

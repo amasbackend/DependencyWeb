@@ -1,0 +1,73 @@
+{
+  "$comment": "Documents the exact rules Llm::TestScopeSchema enforces (app/services/llm/test_scope_schema.rb) before a response is trusted enough to persist. The hand-rolled Ruby validator stays authoritative at runtime — this file is for external review/versioning, and test/services/llm/test_scope_prompt_test.rb asserts the two stay in sync on the fields that matter (required test-case fields, case_type enum).",
+  "type": "object",
+  "required": ["summary", "affected_modules", "test_cases", "regression_cases", "pass_criteria", "manual_checks", "uncertain_items"],
+  "properties": {
+    "summary": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "changes": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string" }, "description": { "type": "string" } } } }
+      }
+    },
+    "affected_modules": { "type": "array", "items": { "type": "string" } },
+    "test_cases": { "type": "array", "items": { "$ref": "#/$defs/testCase" } },
+    "regression_cases": { "type": "array", "items": { "$ref": "#/$defs/regressionCase" } },
+    "pass_criteria": { "type": "array", "items": { "type": "string" } },
+    "manual_checks": { "type": "array", "items": { "type": "string" } },
+    "uncertain_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description"],
+        "properties": {
+          "description": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string" },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "preparation": {
+      "type": "array",
+      "description": "Optional — a missing key is fine (Reports::Build treats it as empty); present-but-wrong-type is still a real validation error.",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "testCase": {
+      "type": "object",
+      "description": "case_type is REQUIRED here (not on regressionCase) — TestScopeSchema#check_test_cases(require_case_type: true) for test_cases, false for regression_cases.",
+      "required": ["name", "verification_purpose", "expected_result", "steps", "evidence", "impact_item_refs", "case_type"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "screen_key": { "type": "string", "description": "ScreenCatalog key the case runs on; page_path is derived from it, never written by the LLM" },
+        "case_type": { "type": "string", "enum": ["core_change", "direct_impact", "indirect_impact"] },
+        "impact_item_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^(CHG|FILE)-\\d+$" } },
+        "page_path": { "type": ["string", "null"] },
+        "verification_purpose": { "type": "string", "minLength": 1 },
+        "steps": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "expected_result": { "type": "string", "minLength": 1 },
+        "failure_criteria": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "regressionCase": {
+      "type": "object",
+      "required": ["name", "verification_purpose", "expected_result", "steps", "evidence", "impact_item_refs"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "screen_key": { "type": "string", "description": "ScreenCatalog key the case runs on; page_path is derived from it, never written by the LLM" },
+        "impact_item_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^(CHG|FILE)-\\d+$" } },
+        "page_path": { "type": ["string", "null"] },
+        "verification_purpose": { "type": "string", "minLength": 1 },
+        "steps": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "expected_result": { "type": "string", "minLength": 1 },
+        "failure_criteria": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}
