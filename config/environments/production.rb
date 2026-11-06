@@ -49,7 +49,9 @@ Rails.application.configure do
   # config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
+  # The Apache + Passenger vhost (port 3482) serves plain HTTP, so this is off by
+  # default; set RAILS_FORCE_SSL=true once HTTPS is terminated in front of the app.
+  config.force_ssl = ENV["RAILS_FORCE_SSL"] == "true"
 
   # Log to STDOUT by default
   config.logger = ActiveSupport::Logger.new(STDOUT)
